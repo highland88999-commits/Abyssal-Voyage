@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Nexus Vortex: Apex Voyage</title>
+    <title>Nexus Vortex: Apex Survivor</title>
     <style>
         body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', monospace; user-select: none; touch-action: none; }
         #overlay {
@@ -12,7 +12,21 @@
             justify-content: center; align-items: center; gap: 15px;
             background: rgba(0,0,0,0.95); color: #fff; transition: opacity 0.5s;
         }
-        h1 { letter-spacing: 5px; color: #00f2ff; text-shadow: 0 0 10px #00f2ff; text-align: center; }
+        h1 { letter-spacing: 5px; color: #00f2ff; text-shadow: 0 0 10px #00f2ff; text-align: center; margin-bottom: 0;}
+        
+        #usernameInput {
+            padding: 10px; font-size: 18px; font-family: 'Courier New', monospace;
+            background: rgba(0, 242, 255, 0.1); color: #00f2ff; border: 1px solid #00f2ff;
+            text-align: center; width: 250px; text-transform: uppercase; outline: none;
+        }
+        
+        #leaderboard {
+            background: rgba(0, 10, 20, 0.8); border: 1px solid #ffaa00; padding: 15px;
+            border-radius: 8px; color: #ffaa00; width: 250px; text-align: left; font-size: 14px;
+        }
+        #leaderboard h3 { margin: 0 0 10px 0; text-align: center; border-bottom: 1px solid #ffaa00; padding-bottom: 5px;}
+        #leaderboard p { margin: 5px 0; display: flex; justify-content: space-between; }
+
         .btn-group { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
         button { 
             padding: 15px 30px; font-size: 16px; cursor: pointer; 
@@ -39,8 +53,16 @@
     <div class="hit-flash" id="flash"></div>
 
     <div id="overlay">
-        <h1>NEXUS VOYAGE<br><span style="font-size: 0.5em; color: #ffaa00;">APEX TACTICAL</span></h1>
-        <p style="color: #aaa; text-align: center;">Tilt Phone to Steer | Pinch to Zoom<br>Dodge Rocks & Crows</p>
+        <h1>NEXUS VOYAGE</h1>
+        <span style="font-size: 1.2em; color: #ffaa00; letter-spacing: 3px; margin-bottom: 10px;">APEX SURVIVOR</span>
+        
+        <input type="text" id="usernameInput" placeholder="ENTER CALL-SIGN" maxlength="12">
+        
+        <div id="leaderboard">
+            <h3>NEXUS ARCHIVES</h3>
+            <div id="lb-content">No records found.</div>
+        </div>
+
         <div class="btn-group">
             <button id="micBtn">INIT: MIC</button>
             <button id="fileBtn">INIT: LOCAL MP3</button>
@@ -49,10 +71,11 @@
     </div>
 
     <div id="ui-panel">
+        <div id="livesStat" style="color: #ff0055; font-weight: bold;">LIVES: 100</div>
+        <div id="distStat" style="color: #00ff88;">DIST: 0m</div>
         <div id="clock">TIME: --:--</div>
         <div id="eventDisplay" style="color: #ffaa00;">EVENT: CLEAR</div>
         <div id="sector">SECTOR: OVERWORLD</div>
-        <div id="tilt">STEER: 0°</div>
     </div>
 
     <div id="controls">
@@ -84,16 +107,46 @@
         // World Objects
         let balloonGroup, camoMat, grassField, sun, distantCity, floodPlane;
         let rain, hail, meteors, scarabs, tracks, trainGroup;
-        let obstacles = [], crows = [];
+        let obstacles = [], crows = [], lightningLines = [];
+        let waveMesh, floatingRocks = [];
         
         // Physics & State
         let targetX = 0, currentX = 0, zoomTarget = 40;
         let lastTap = 0, speedMultiplier = 1.0;
-        let currentSector = 'OVERWORLD';
-        let timeOffset = 0; // For skipping events
+        let currentSector = 'OVERWORLD', timeOffset = 0;
+        let waveActive = false;
 
-        // --- Audio Routing ---
+        // Player State
+        let callSign = "UNKNOWN";
+        let lives = 100;
+        let distance = 0;
+        let isInvulnerable = false;
+        let isGameOver = false;
+
+        // --- Init & Data ---
+        function loadLeaderboard() {
+            try {
+                let scores = JSON.parse(localStorage.getItem('nexusScores') || '[]');
+                if(scores.length > 0) {
+                    let html = '';
+                    scores.forEach(s => html += `<p><span>${s.name}</span> <span>${s.dist}m</span></p>`);
+                    document.getElementById('lb-content').innerHTML = html;
+                }
+            } catch(e) { console.warn("Local storage blocked."); }
+        }
+        loadLeaderboard();
+
+        function saveScore() {
+            try {
+                let scores = JSON.parse(localStorage.getItem('nexusScores') || '[]');
+                scores.push({name: callSign, dist: Math.floor(distance)});
+                scores.sort((a,b) => b.dist - a.dist);
+                localStorage.setItem('nexusScores', JSON.stringify(scores.slice(0, 5)));
+            } catch(e) {}
+        }
+
         async function initMic() {
+            callSign = document.getElementById('usernameInput').value || "CAPTAIN";
             if (typeof DeviceOrientationEvent.requestPermission === 'function') await DeviceOrientationEvent.requestPermission();
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -104,8 +157,8 @@
             } catch (err) { alert("Mic denied. Use LOCAL MP3."); }
         }
 
-        function initFileClick() { document.getElementById('audioUpload').click(); }
         document.getElementById('audioUpload').addEventListener('change', async function() {
+            callSign = document.getElementById('usernameInput').value || "CAPTAIN";
             if (typeof DeviceOrientationEvent.requestPermission === 'function') await DeviceOrientationEvent.requestPermission();
             if (this.files.length === 0) return;
             audioElement.src = URL.createObjectURL(this.files[0]);
@@ -136,6 +189,36 @@
             if(!scene) setupScene();
         }
 
+        function takeDamage() {
+            if (isInvulnerable || isGameOver) return;
+            lives--;
+            document.getElementById('livesStat').innerText = `LIVES: ${lives}`;
+            
+            // Red Flash
+            document.getElementById('flash').style.background = 'red';
+            document.getElementById('flash').style.opacity = '0.6';
+            setTimeout(() => document.getElementById('flash').style.opacity = '0', 100);
+            
+            isInvulnerable = true;
+            let flickerInt = setInterval(() => balloonGroup.visible = !balloonGroup.visible, 100);
+            
+            if (lives <= 0) {
+                isGameOver = true;
+                clearInterval(flickerInt);
+                balloonGroup.visible = false;
+                saveScore();
+                alert(`HULL BREACH. MISSION FAILED.\nCAPTAIN: ${callSign}\nDISTANCE: ${Math.floor(distance)}m`);
+                location.reload();
+                return;
+            }
+
+            setTimeout(() => {
+                clearInterval(flickerInt);
+                balloonGroup.visible = true;
+                isInvulnerable = false;
+            }, 1500);
+        }
+
         // --- Construction ---
         function setupScene() {
             scene = new THREE.Scene();
@@ -161,9 +244,9 @@
             buildObstacles();
             buildWeather();
 
-            window.addEventListener('deviceorientation', (e) => { targetX = e.gamma * 0.8; document.getElementById('tilt').innerText = `STEER: ${Math.round(e.gamma)}°`; });
+            window.addEventListener('deviceorientation', (e) => { targetX = e.gamma * 0.8; });
             window.addEventListener('wheel', (e) => { zoomTarget = Math.max(15, Math.min(80, zoomTarget + e.deltaY * 0.05)); });
-            window.addEventListener('touchstart', (e) => { if(e.target.tagName !== 'BUTTON') handleDoubleTap(); });
+            window.addEventListener('touchstart', (e) => { if(e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') handleDoubleTap(); });
             document.getElementById('shiftBtn').addEventListener('click', jumpSector);
             document.getElementById('skipBtn').addEventListener('click', () => timeOffset += 10 * 60000);
             
@@ -175,7 +258,6 @@
             grassField.rotation.x = -Math.PI / 2;
             scene.add(grassField);
 
-            // Distant City
             const cityGeo = new THREE.BufferGeometry();
             const cityPos = [];
             for(let i=0; i<100; i++) cityPos.push((Math.random()-0.5)*800, Math.random()*50, -800);
@@ -183,7 +265,6 @@
             distantCity = new THREE.Points(cityGeo, new THREE.PointsMaterial({ color: 0x00f2ff, size: 8, transparent: true, opacity: 0.4 }));
             scene.add(distantCity);
 
-            // Train Tracks (Offset Right)
             tracks = new THREE.Group();
             for(let i=0; i<20; i++) {
                 const plank = new THREE.Mesh(new THREE.BoxGeometry(10, 0.5, 2), new THREE.MeshStandardMaterial({ color: 0x332211 }));
@@ -192,14 +273,12 @@
             }
             scene.add(tracks);
 
-            // Train Object
             trainGroup = new THREE.Group();
             const engine = new THREE.Mesh(new THREE.BoxGeometry(6, 10, 20), new THREE.MeshStandardMaterial({ color: 0x222222, emissive: 0x110000 }));
             engine.position.set(40, 5, 200);
             trainGroup.add(engine);
             scene.add(trainGroup);
 
-            // Camo Balloon
             const camoCanvas = document.createElement('canvas'); camoCanvas.width = camoCanvas.height = 256;
             const ctx = camoCanvas.getContext('2d'); ctx.fillStyle = '#2d3e26'; ctx.fillRect(0,0,256,256);
             for(let i=0; i<100; i++) { ctx.fillStyle = ['#1a2416', '#4b5332', '#6b734d'][Math.floor(Math.random()*3)]; ctx.beginPath(); ctx.arc(Math.random()*256, Math.random()*256, 10+Math.random()*30, 0, Math.PI*2); ctx.fill(); }
@@ -236,14 +315,19 @@
 
         function buildWeather() {
             rain = createParticles(0xaaaaFF, 5000, 0.2);
-            hail = createParticles(0xffffff, 3000, 0.8); // Bigger, white
-            meteors = createParticles(0xff4400, 500, 1.5); // Orange
-            scarabs = createParticles(0xffd700, 2000, 0.6); // Gold dots
+            hail = createParticles(0xffffff, 3000, 0.8); 
+            meteors = createParticles(0xff4400, 500, 1.5); 
+            scarabs = createParticles(0xffd700, 2000, 0.6); 
 
             floodPlane = new THREE.Mesh(new THREE.PlaneGeometry(500, 1000), new THREE.MeshStandardMaterial({ color: 0x0055aa, transparent: true, opacity: 0.8 }));
             floodPlane.rotation.x = -Math.PI/2;
-            floodPlane.position.y = -10; // Hidden initially
+            floodPlane.position.y = -10; 
             scene.add(floodPlane);
+
+            // Tidal Wave
+            waveMesh = new THREE.Mesh(new THREE.BoxGeometry(200, 40, 20), new THREE.MeshStandardMaterial({ color: 0x0077dd, transparent: true, opacity: 0.9 }));
+            waveMesh.visible = false;
+            scene.add(waveMesh);
         }
 
         function createParticles(color, count, size) {
@@ -254,6 +338,33 @@
             const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color, size, transparent: true, opacity: 0 }));
             scene.add(pts);
             return pts;
+        }
+
+        function generateLightning() {
+            const mat = new THREE.LineBasicMaterial({ color: 0x00f2ff, transparent: true });
+            const pts = [];
+            let startY = currentSector === 'ABYSSAL' ? 60 + Math.random()*20 : -5 - Math.random()*5;
+            let curX = (Math.random()-0.5) * 150;
+            let curY = startY;
+            let curZ = -50 - Math.random()*200;
+            
+            pts.push(new THREE.Vector3(curX, curY, curZ));
+            for(let i=0; i<8; i++) {
+                curX += (Math.random()-0.5)*30;
+                curY += currentSector === 'ABYSSAL' ? -8 : 8; // Branch direction
+                curZ += (Math.random()-0.5)*20;
+                pts.push(new THREE.Vector3(curX, curY, curZ));
+            }
+            
+            const geo = new THREE.BufferGeometry().setFromPoints(pts);
+            const line = new THREE.Line(geo, mat);
+            scene.add(line);
+            
+            sun.intensity = 5; // Flash
+            setTimeout(() => {
+                scene.remove(line); geo.dispose(); mat.dispose();
+                sun.intensity = 1.0; 
+            }, 100);
         }
 
         function handleDoubleTap() {
@@ -267,39 +378,86 @@
             scene.fog.color.setHex(currentSector === 'ABYSSAL' ? 0x000205 : 0x00050a);
         }
 
-        // --- Master 120-Minute Cycle Logic ---
-        function runMasterCycle() {
-            // Calculate where we are in a continuous 120-minute loop
+        // --- Master Cycle ---
+        function runMasterCycle(speed) {
             const elapsedMins = ((Date.now() + timeOffset) / 60000) % 120;
             let currentEvent = 'CLEAR';
 
             rain.material.opacity = 0; hail.material.opacity = 0;
             meteors.material.opacity = 0; scarabs.material.opacity = 0;
-            sun.intensity = 1.0;
 
             if (elapsedMins < 10) { currentEvent = 'RAIN'; rain.material.opacity = 0.5; }
             else if (elapsedMins >= 20 && elapsedMins < 30) { currentEvent = 'HAIL'; hail.material.opacity = 1; }
             else if (elapsedMins >= 40 && elapsedMins < 50) { 
                 currentEvent = 'STORM'; rain.material.opacity = 0.8; 
-                if (Math.random() < 0.05) sun.intensity = 5; // Lightning flash
+                if (Math.random() < 0.02) generateLightning(); 
             }
             else if (elapsedMins >= 60 && elapsedMins < 70) {
                 currentEvent = 'FLOOD';
-                // Interpolate water level based on progress through the 10 mins
-                let progress = elapsedMins - 60; 
-                let targetY = progress < 5 ? -10 + (progress/5)*15 : 5 - ((progress-5)/5)*15;
-                floodPlane.position.y += (targetY - floodPlane.position.y) * 0.05;
+                floodPlane.position.y += (5 - floodPlane.position.y) * 0.05;
+
+                // Tidal Wave Phase
+                if (elapsedMins < 60.1 && !waveActive) {
+                    waveMesh.position.set(0, 10, -600);
+                    waveMesh.visible = true;
+                    waveActive = true;
+                    floatingRocks.forEach(r => scene.remove(r));
+                    floatingRocks = [];
+                }
+                
+                if (waveActive && waveMesh.position.z < 20) {
+                    waveMesh.position.z += speed * 4 + 2; // Rushes forward
+                    if (waveMesh.position.z >= 0 && floatingRocks.length === 0) {
+                        // CRASH
+                        document.getElementById('flash').style.background = 'blue';
+                        document.getElementById('flash').style.opacity = '0.7';
+                        setTimeout(() => document.getElementById('flash').style.opacity = '0', 200);
+                        
+                        // Spawn Debris
+                        for(let i=0; i<30; i++) {
+                            const rGeo = new THREE.DodecahedronGeometry(2 + Math.random()*2);
+                            const rMat = new THREE.MeshStandardMaterial({ color: 0x334455 });
+                            const fRock = new THREE.Mesh(rGeo, rMat);
+                            fRock.position.set((Math.random()-0.5)*150, 5, -Math.random()*500);
+                            scene.add(fRock);
+                            floatingRocks.push(fRock);
+                        }
+                    }
+                } else if (waveMesh.position.z >= 20) {
+                    waveMesh.visible = false;
+                }
+
+                // Bob floating rocks
+                floatingRocks.forEach((fr, idx) => {
+                    fr.position.y = floodPlane.position.y + 1 + Math.sin(Date.now()*0.003 + idx) * 1.5;
+                    fr.position.z += speed;
+                    if(fr.position.z > 50) fr.position.z = -500;
+                    
+                    if (Math.abs(fr.position.z - balloonGroup.position.z) < 5 && Math.abs(fr.position.x - balloonGroup.position.x) < 4) {
+                        takeDamage();
+                    }
+                });
+
             }
-            else if (elapsedMins >= 80 && elapsedMins < 90) { currentEvent = 'METEORS'; meteors.material.opacity = 1; }
+            else if (elapsedMins >= 80 && elapsedMins < 90) { 
+                currentEvent = 'METEORS'; meteors.material.opacity = 1; 
+                floodPlane.position.y += (-10 - floodPlane.position.y) * 0.05; // Drain
+                waveActive = false; waveMesh.visible = false;
+                floatingRocks.forEach(r => scene.remove(r)); floatingRocks = [];
+            }
             else if (elapsedMins >= 100 && elapsedMins < 110) { currentEvent = 'SCARABS'; scarabs.material.opacity = 1; }
-            else { floodPlane.position.y += (-10 - floodPlane.position.y) * 0.1; } // Recede flood if off-cycle
+            else { 
+                floodPlane.position.y += (-10 - floodPlane.position.y) * 0.1; 
+                waveActive = false; waveMesh.visible = false;
+                floatingRocks.forEach(r => scene.remove(r)); floatingRocks = [];
+            }
 
             document.getElementById('eventDisplay').innerText = `EVENT: ${currentEvent} (${Math.floor(elapsedMins)}m/120m)`;
         }
 
         function animate() {
+            if (isGameOver) return;
             requestAnimationFrame(animate);
-            runMasterCycle();
             
             let bass = 0;
             if (analyzer) {
@@ -315,48 +473,44 @@
 
             const speed = (1 + bass * 3) * speedMultiplier;
             grassField.position.z += speed; if(grassField.position.z > 50) grassField.position.z = 0;
+            
+            // Distance tracking
+            distance += speed * 0.2;
+            document.getElementById('distStat').innerText = `DIST: ${Math.floor(distance)}m`;
 
-            // Train Logic (Runs every 2 minutes)
+            runMasterCycle(speed);
+
+            // Train
             const trainMins = ((Date.now() + timeOffset) / 60000) % 2;
             tracks.children.forEach(t => { t.position.z += speed; if(t.position.z > 50) t.position.z -= 1000; });
-            if (trainMins < 0.2) trainGroup.children[0].position.z += speed * 3; // Moves forward rapidly
-            else trainGroup.children[0].position.z = -800; // Reset way back
+            if (trainMins < 0.2) trainGroup.children[0].position.z += speed * 3;
+            else trainGroup.children[0].position.z = -800;
 
-            // Distant City (Parallax)
             distantCity.position.z += speed * 0.05; if(distantCity.position.z > 500) distantCity.position.z = 0;
 
-            // Obstacles & Collision
+            // Collision: Ground Rocks
             obstacles.forEach(rock => {
                 rock.position.z += speed;
                 if(rock.position.z > 50) { rock.position.z = -800 - Math.random()*200; rock.position.x = (Math.random()-0.5)*100; }
                 
-                // Hit detection
-                if (Math.abs(rock.position.z - balloonGroup.position.z) < 5 && Math.abs(rock.position.x - balloonGroup.position.x) < 4) {
-                    document.getElementById('flash').style.opacity = '0.5';
-                    setTimeout(() => document.getElementById('flash').style.opacity = '0', 100);
-                }
+                if (Math.abs(rock.position.z - balloonGroup.position.z) < 5 && Math.abs(rock.position.x - balloonGroup.position.x) < 4) takeDamage();
             });
 
-            // Crows
+            // Collision: Crows
             crows.forEach((crow, i) => {
-                crow.position.z += speed * 1.5;
-                crow.position.x += 0.5; // Fly diagonally
-                crow.position.y += Math.sin(Date.now()*0.01 + i) * 0.2; // Flap
-                if(crow.position.z > 50 || crow.position.x > 80) { 
-                    crow.position.set(-60 - Math.random()*20, 5 + Math.random()*15, -600 - Math.random()*200); 
-                }
-                if (Math.abs(crow.position.z - balloonGroup.position.z) < 4 && Math.abs(crow.position.x - balloonGroup.position.x) < 3) {
-                    document.getElementById('flash').style.opacity = '0.5'; setTimeout(() => document.getElementById('flash').style.opacity = '0', 100);
-                }
+                crow.position.z += speed * 1.5; crow.position.x += 0.5; crow.position.y += Math.sin(Date.now()*0.01 + i) * 0.2;
+                if(crow.position.z > 50 || crow.position.x > 80) crow.position.set(-60 - Math.random()*20, 5 + Math.random()*15, -600 - Math.random()*200); 
+                
+                if (Math.abs(crow.position.z - balloonGroup.position.z) < 4 && Math.abs(crow.position.x - balloonGroup.position.x) < 3) takeDamage();
             });
 
-            // Weather Particles
+            // Weather Movement
             const moveWeather = (mesh, drop, wrapY) => {
                 if(mesh.material.opacity > 0) {
                     const pos = mesh.geometry.attributes.position.array;
                     for(let i=1; i<pos.length; i+=3) { 
                         pos[i] -= drop; 
-                        if(mesh === meteors) pos[i-1] += drop; // meteors move diagonally X
+                        if(mesh === meteors) pos[i-1] += drop;
                         if(pos[i] < 0) pos[i] = wrapY; 
                     }
                     mesh.geometry.attributes.position.needsUpdate = true;
@@ -366,13 +520,12 @@
             moveWeather(hail, 4, 150);
             moveWeather(meteors, 6, 200);
 
-            // Scarab Swirl
             if(scarabs.material.opacity > 0) {
                 const pos = scarabs.geometry.attributes.position.array;
                 for(let i=0; i<pos.length; i+=3) {
-                    pos[i] += Math.sin(Date.now()*0.005 + i) * 0.5; // Swirl X
-                    pos[i+1] += Math.cos(Date.now()*0.005 + i) * 0.5; // Swirl Y
-                    pos[i+2] += speed; // Move with terrain
+                    pos[i] += Math.sin(Date.now()*0.005 + i) * 0.5;
+                    pos[i+1] += Math.cos(Date.now()*0.005 + i) * 0.5;
+                    pos[i+2] += speed;
                     if(pos[i+2] > 50) pos[i+2] = -400;
                 }
                 scarabs.geometry.attributes.position.needsUpdate = true;
@@ -380,12 +533,10 @@
 
             camoMat.emissive = new THREE.Color(0x00f2ff).multiplyScalar(bass * 0.5);
             bloomPass.strength = 1.0 + (bass * 2);
-
             composer.render();
         }
 
         document.getElementById('micBtn').addEventListener('click', initMic);
-        document.getElementById('fileBtn').addEventListener('click', initFileClick);
         window.onresize = () => {
             camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight); composer.setSize(window.innerWidth, window.innerHeight);
