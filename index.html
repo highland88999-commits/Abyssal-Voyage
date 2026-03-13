@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Omni-Voyage - Audio Engine</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        #overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1000; display: flex; flex-direction: column; 
+            justify-content: center; align-items: center;
+            background: rgba(0,0,0,0.9); transition: opacity 0.5s ease;
+            text-align: center;
+        }
+        
+        #title { color: #00ffff; font-size: 3em; text-transform: uppercase; letter-spacing: 0.1em; text-shadow: 0 0 10px #00ffff; margin-bottom: 0; }
+        #tagline { color: #ffaa00; font-size: 1.2em; text-transform: uppercase; margin-top: 5px; opacity: 0.8; }
+        #instructions { color: #fff; font-size: 0.9em; opacity: 0.6; margin-bottom: 20px; }
+        
+        #startBtn { 
+            padding: 15px 50px; font-size: 1.5em; cursor: pointer; 
+            background: transparent; color: #00ffff; 
+            border: 2px solid #00ffff; text-transform: uppercase; 
+            font-weight: bold; border-radius: 5px;
+            box-shadow: 0 0 15px #00ffff, inset 0 0 10px #00ffff;
+            transition: all 0.3s;
+        }
+        #startBtn:hover { background: #00ffff; color: #000; box-shadow: 0 0 25px #00ffff; }
+        #startBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        #controlPanel {
+            position: absolute; bottom: 20px; left: 20px;
+            z-index: 1000; color: white; display: none;
+            background: rgba(0,0,0,0.7); padding: 10px; border-radius: 5px;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        button#shiftBtn { 
+            padding: 5px 15px; background: transparent; color: #ff00ff; border: 1px solid #ff00ff;
+            cursor: pointer; text-transform: uppercase; font-weight: bold; font-size: 0.8em; 
+        }
+    </style>
+</head>
+<body>
+
+    <div id="overlay">
+        <h1 id="title">OMNI-VOYAGE</h1>
+        <p id="tagline">Multidimensional Audio Engine</p>
+        <p id="instructions">(Requires continuous microphone access for full reactivity)</p>
+        <button id="startBtn">ENGAGE SYSTEM</button>
+    </div>
+
+    <div id="controlPanel">
+        Dimension: <span id="currentDimText" style="color:#00ffff; font-weight:bold;">CYBERPUNK</span>
+        <button id="shiftBtn">Shift</button>
+    </div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+        import { GlitchPass } from 'three/examples/jsm/postprocessing/GlitchPass.js';
+        import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+
+        // --- Core Scene and Renderer Setup ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 10, 40);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // --- Audio System Setup ---
+        let analyzer, dataArray, micOn = false;
+        async function setupMic() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioContext.createMediaStreamSource(stream);
+                analyzer = audioContext.createAnalyser();
+                analyzer.fftSize = 256;
+                source.connect(analyzer);
+                dataArray = new Uint8Array(analyzer.frequencyBinCount);
+                micOn = true;
+                
+                // Once mic is on, initialize everything else and hide overlay
+                document.getElementById('startBtn').disabled = false; // Just in case
+                document.getElementById('startBtn').textContent = "ENGAGE SYSTEM";
+                // Delay hiding to ensure audio setup is robust
+                setTimeout(() => {
+                    document.getElementById('overlay').style.opacity = '0';
+                    setTimeout(() => document.getElementById('overlay').style.display = 'none', 500);
+                    document.getElementById('controlPanel').style.display = 'block';
+                    initMain(); // Start the rest
+                }, 500);
+
+            } catch (err) {
+                console.error("Error accessing microphone:", err);
+                document.getElementById('startBtn').textContent = "ERROR: MIC DENIED";
+                document.getElementById('startBtn').disabled = true;
+                alert("Please enable microphone access for this experience.");
+            }
+        }
+
+        // --- Custom Chromatic Aberration & Film Grain Shader ---
+        const AdvancedPassShader = {
+            uniforms: {
+                "tDiffuse": { value: null },
+                "amount": { value: 0.005 }, // Chromatic Aberration intensity
+                "time": { value: 0.0 },
+                "grainAmount": { value: 0.05 } // Film grain intensity
+            },
+            vertexShader: `
+                varying vec2 vUv;
+                void main() {
+                    vUv = uv;
+                    gl_Position = projectionMatrix * modelMatrix * viewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform sampler2D tDiffuse;
+                uniform float amount;
+                uniform float time;
+                uniform float grainAmount;
+                varying vec2 vUv;
+
+                // Simple grain function
+                float random(vec2 p) {
+                    return fract(sin(dot(p + vec2(time, time), vec2(12.9898, 78.233))) * 43758.5453);
+                }
+
+                void main() {
+                    vec2 uv = vUv;
+                    vec4 color;
+
+                    // Chromatic Aberration - shift colors
+                    color.r = texture2D(tDiffuse, vec2(uv.x + amount, uv.y + amount)).r;
+                    color.g = texture2D(tDiffuse, uv).g;
+                    color.b = texture2D(tDiffuse, vec2(uv.x - amount, uv.y - amount)).b;
+                    color.a = 1.0;
+
+                    // Film Grain
+                    float diff = random(uv) - 0.5;
+                    color.rgb += diff * grainAmount;
+
+                    gl_FragColor = color;
+                }
+            `
+        };
+
+        // --- Post-Processing Setup ---
+        const composer = new EffectComposer(renderer);
+        const renderScene = new RenderPass(scene, camera);
+        composer.addPass(renderScene);
+
+        const glitchPass = new GlitchPass();
+        glitchPass.enabled = false; // Start disabled
+        composer.addPass(glitchPass);
+
+        const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.0, 0.4, 0.85);
+        composer.addPass(bloomPass);
+
+        const advancedPass = new ShaderPass(AdvancedPassShader);
+        advancedPass.renderToScreen = true; // Output pass
+        composer.addPass(advancedPass);
+
+        // --- Scene Assets and Configuration ---
+        const walls = [];
+        let time = 0;
+        let flightParams = { speed: 0.2, currentSpeed: 0.2 }; // Base speed
+        const baseFogDensity = 0.02;
+
+        // State Machine
+        let currentDimension = 'CYBERPUNK';
+        const DIMS = { CYBERPUNK: 'CYBERPUNK', ABYSSAL: 'ABYSSAL' };
+
+        const environmentConfigs = {
+            [DIMS.CYBERPUNK]: {
+                fogColor: 0x000000,
+                baseLight: 0xffaa66,
+                baseLightInt: 1.5,
+                wallColor: 0x8b3a1a, // Use previous simple color as base
+                wallMat: new THREE.MeshStandardMaterial({ color: 0x8b3a1a, flatShading: true, metalness: 0.8, roughness: 0.2, wireframe: false }),
+                wallGeo: null, // Initialized later
+                floorColor: 0x00081a,
+                floorMat: null,
+                lightScan: new THREE.DirectionalLight(0xff00ff, 1.0), // Moving city scan light
+                bloomParams: { threshold: 0.1, strength: 1.5, radius: 0.8 },
+                advancedParams: { CA: 0.005, grain: 0.05 }
+            },
+            [DIMS.ABYSSAL]: {
+                fogColor: 0x00101a,
+                baseLight: 0x00f2ff, // Deep water cyan
+                baseLightInt: 1.2,
+                wallColor: 0x1a2b3c, // Jagged rocks
+                wallMat: new THREE.MeshStandardMaterial({ color: 0x1a2b3c, flatShading: true, metalness: 0.3, roughness: 1.0, wireframe: false, emissive: 0x001122 }),
+                wallGeo: null, // Initialized later
+                floorColor: 0x1a1a00,
+                floorMat: new THREE.MeshStandardMaterial({ color: 0x1a1a00, roughness: 1.0, wireframe: true }), // Simple wireframe ground
+                lightScan: null, // Handled differently
+                bloomParams: { threshold: 0.4, strength: 0.8, radius: 0.5 },
+                advancedParams: { CA: 0.002, grain: 0.1 } // Stronger grain, subtler CA
+            }
+        };
+
+        // --- Initial State and Environment Updates ---
+        const activeEnvironment = environmentConfigs[currentDimension];
+        scene.fog = new THREE.FogExp2(activeEnvironment.fogColor, baseFogDensity);
+        scene.add(new THREE.AmbientLight(0x402010, 0.5)); // General ambient
+
+        const sun = new THREE.DirectionalLight(activeEnvironment.baseLight, activeEnvironment.baseLightInt);
+        sun.position.set(0, 50, -50);
+        scene.add(sun);
+        
+        const scanLight = new THREE.SpotLight(0xff00ff, 1.0); // For scanning
+        if (activeEnvironment.lightScan) {
+            scene.add(scanLight);
+            scanLight.angle = Math.PI / 8;
+            scanLight.penumbra = 0.3;
+        }
+
+        function updateEnvironment(newDimension) {
+            const config = environmentConfigs[newDimension];
+            currentDimension = newDimension;
+            
+            // Update Scene
+            scene.fog.color.setHex(config.fogColor);
+            
+            // Update Lights
+            sun.color.setHex(config.baseLight);
+            sun.intensity = config.baseLightInt;
+
+            // Handle scanning light
+            scene.remove(scanLight); // Remove existing
+            if (newDimension === DIMS.CYBERPUNK) {
+                scene.add(scanLight);
+                scanLight.color.setHex(0xff00ff);
+                scanLight.intensity = 1.0;
+            } else if (newDimension === DIMS.ABYSSAL) {
+                 scene.add(scanLight);
+                 scanLight.color.setHex(0xffffff); // Flicker spotlight
+                 scanLight.intensity = 0.5;
+            }
+
+            // Update Materials for existing objects
+            walls.forEach(seg => {
+                seg.left.material = config.wallMat;
+                seg.right.material = config.wallMat;
+            });
+            floor.material = config.floorMat;
+
+            // Update Post-Processing
+            bloomPass.threshold = config.bloomParams.threshold;
+            bloomPass.strength = config.bloomParams.strength;
+            bloomPass.radius = config.bloomParams.radius;
+            advancedPass.uniforms.amount.value = config.advancedParams.CA;
+            advancedPass.uniforms.grainAmount.value = config.advancedParams.grain;
+
+            // Update UI
+            document.getElementById('currentDimText').textContent = newDimension;
+            document.getElementById('currentDimText').style.color = (newDimension === DIMS.CYBERPUNK) ? "#00ffff" : "#00f2ff";
+        }
+
+        // --- Transition Logic ---
+        function transitionDimension() {
+            // Speed up, disable bloom for a glitchy transition, enable glitchpass
+            flightParams.currentSpeed = 1.0; // Rapid warping
+            glitchPass.enabled = true;
+            bloomPass.enabled = false;
+            advancedPass.uniforms.amount.value = 0.02; // Strong CA during warp
+
+            // Transition scene fog and other parameters after a brief delay
+            setTimeout(() => {
+                const nextDimension = (currentDimension === DIMS.CYBERPUNK) ? DIMS.ABYSSAL] : DIMS.CYBERPUNK];
+                updateEnvironment(nextDimension);
+            }, 500);
+
+            // Turn off glitch and restore parameters
+            setTimeout(() => {
+                glitchPass.enabled = false;
+                bloomPass.enabled = true;
+                flightParams.currentSpeed = flightParams.speed; // Reset speed
+            }, 1000);
+        }
+        
+        // --- Object Creation ---
+
+        // Captain Spotlight/City Scanner
+        const captainScanTarget = new THREE.Object3D();
+        scene.add(captainScanTarget);
+        scanLight.target = captainScanTarget;
+
+        // Canyon/City Walls (Initializing configuration for both types)
+        // High fidelity walls (using noise/more geometry) could be defined here
+        environmentConfigs[DIMS.CYBERPUNK].wallGeo = new THREE.PlaneGeometry(200, 100, 32, 32);
+        environmentConfigs[DIMS.ABYSSAL].wallGeo = new THREE.PlaneGeometry(250, 120, 40, 40); // Larger/jagged rocks
+
+        // Create modular wall segments that we'll swap configurations for
+        for (let i = 0; i < 4; i++) {
+            // Initialize with Cyberpunk geometry/material by default
+            let left = new THREE.Mesh(environmentConfigs[DIMS.CYBERPUNK].wallGeo, environmentConfigs[DIMS.CYBERPUNK].wallMat);
+            left.rotation.y = Math.PI / 2;
+            left.position.set(-35, 20, -i * 100);
+            scene.add(left);
+            
+            let right = new THREE.Mesh(environmentConfigs[DIMS.CYBERPUNK].wallGeo, environmentConfigs[DIMS.CYBERPUNK].wallMat);
+            right.rotation.y = -Math.PI / 2;
+            right.position.set(35, 20, -i * 100);
+            scene.add(right);
+            
+            walls.push({ left, right, z: -i * 100 });
+        }
+
+        // The River Floor (Initialized for both)
+        environmentConfigs[DIMS.CYBERPUNK].floorMat = new THREE.MeshStandardMaterial({ color: 0x00081a, metalness: 0.9, roughness: 0.1 }); // More reflective city river
+        environmentConfigs[DIMS.ABYSSAL].floorMat = new THREE.MeshStandardMaterial({ color: 0x1a1a00, roughness: 1.0, wireframe: true }); // Simple wireframe ground
+
+        const riverGeo = new THREE.PlaneGeometry(70, 400, 20, 20); // More segments for Abyssal grid
+        const floor = new THREE.Mesh(riverGeo, environmentConfigs[currentDimension].floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = -0.5; // Slightly below zero plane
+        scene.add(floor);
+
+        // --- The Balloon Group (Re-integrated and stylized) ---
+        const balloonGroup = new THREE.Group();
+        scene.add(balloonGroup);
+        balloonGroup.position.set(0, 5, 0); // Start higher for canyon flying
+
+        // Envelope (stylized Icosahedron)
+        const envelopeGeo = new THREE.IcosahedronGeometry(4, 2); // Slightly smaller
+        const neonMat = new THREE.MeshStandardMaterial({ 
+            color: 0x00ffff, 
+            emissive: 0x00ffff, 
+            emissiveIntensity: 1, 
+            wireframe: true // Key for that cyber-style envelope
+        });
+        const envelope = new THREE.Mesh(envelopeGeo, neonMat);
+        envelope.scale.set(1, 1.3, 1);
+        balloonGroup.add(envelope);
+
+        // Captain and Hoodie (Glow intensified)
+        const captain = new THREE.Group();
+        const hoodieMat = new THREE.MeshStandardMaterial({ 
+            color: 0xffaa00, 
+            emissive: 0xffaa00, 
+            emissiveIntensity: 5 // Strong glow
+        });
+        // Simple Humanoid Shape
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, 0.2), hoodieMat);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.12, 16, 16), hoodieMat);
+        head.position.y = 0.35;
+        captain.add(body, head);
+        captain.position.set(0, -6.0, 0); // Positioned inside imaginary basket area
+        balloonGroup.add(captain);
+
+        // Make captain visible for lighting
+        scanLight.position.set(0, 10, -5); // Position of the scanning light itself relative to camera/scene
+        captain.visible = true; // Always visible in both dimensions
+
+        // --- Particle Systems ---
+        const particleConfigs = {
+            [DIMS.CYBERPUNK]: {
+                count: 300,
+                color: 0xffffff, // Subtle dust
+                velocity: 1.0,
+                baseOpacity: 0.1
+            },
+            [DIMS.ABYSSAL]: {
+                count: 1000, // Rich marine snow
+                color: 0xccffff, 
+                velocity: 0.2, // Drifts slowly
+                baseOpacity: 0.4
+            }
+        };
+
+        const activeParticleConfig = particleConfigs[currentDimension];
+        const particleGeo = new THREE.BufferGeometry();
+        const particlePositions = new Float32Array(activeParticleConfig.count * 3);
+        const particleVelocities = new Float32Array(activeParticleConfig.count);
+
+        for (let i = 0; i < activeParticleConfig.count; i++) {
+            particlePositions[i * 3] = (Math.random() - 0.5) * 100;
+            particlePositions[i * 3 + 1] = Math.random() * 50;
+            particlePositions[i * 3 + 2] = -Math.random() * 200; // Far ahead
+            particleVelocities[i] = Math.random() * activeParticleConfig.velocity;
+        }
+
+        particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePositions, 3));
+        const particleMat = new THREE.PointsMaterial({ 
+            color: activeParticleConfig.color, 
+            size: 0.2, 
+            transparent: true, 
+            opacity: activeParticleConfig.baseOpacity, 
+            depthWrite: false, 
+            blending: THREE.AdditiveBlending 
+        });
+        const particleSystem = new THREE.Points(particleGeo, particleMat);
+        scene.add(particleSystem);
+
+        function updateParticleSystem(newDimension) {
+            const config = particleConfigs[newDimension];
+            particleSystem.material.color.setHex(config.color);
+            particleSystem.material.opacity = config.baseOpacity;
+            particleSystem.geometry.attributes.position.array.fill(0); // Clear old points/reset logic as needed. Simple re-init below:
+            
+            // For a robust system, re-fill buffer or manage existing.
+            // Simplified: rebuild basic system for illustrative clarity.
+            // A professional engine would manage particle buffers/lifecycles more carefully.
+             const newParticlePositions = new Float32Array(config.count * 3);
+             const newParticleVelocities = new Float32Array(config.count);
+            for (let i = 0; i < config.count; i++) {
+                newParticlePositions[i * 3] = (Math.random() - 0.5) * 100;
+                newParticlePositions[i * 3 + 1] = Math.random() * 50;
+                newParticlePositions[i * 3 + 2] = -Math.random() * 200; // Far ahead
+                newParticleVelocities[i] = Math.random() * config.velocity;
+            }
+            particleGeo.setAttribute('position', new THREE.BufferAttribute(newParticlePositions, 3));
+             // Velocities are used in animate, need to be accessible. Simpler logic for this example: 
+             // reuse `particleVelocities` buffer for drift logic in animate, not strictly re-filling with new count here.
+             // Assume `particleVelocities` buffer still exists for simplified logic below.
+        }
+
+        // --- Abyssal Specifics: Bubbles ---
+        let bubbles = [];
+        function spawnBubble(volume) {
+            const size = 0.5 + (volume / 255) * 1.5;
+            const geo = new THREE.SphereGeometry(size, 8, 8); // Simple sphere
+            const mat = new THREE.MeshPhongMaterial({ 
+                color: 0xffffff, 
+                transparent: true, 
+                opacity: 0.3,
+                shininess: 100,
+                 specular: 0xaaaaaa // Soft specular highlighting
+            });
+            const bubble = new THREE.Mesh(geo, mat);
+            // Spawn ahead of walls, low on seabed area
+            bubble.position.set((Math.random() - 0.5) * 50, -2, -150);
+            bubble.userData.velocityUp = 0.05 + Math.random() * 0.1; // Slow rise
+            scene.add(bubble);
+            bubbles.push(bubble);
+        }
+
+        // --- Main Animation Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            time += 0.01;
+
+            // Update custom shader uniforms
+            advancedPass.uniforms.time.value = time;
+
+            // Audio Analysis & Reactivity
+            if (analyzer && micOn) {
+                analyzer.getByteFrequencyData(dataArray);
+
+                // Analyze frequency bands (with improved specific ranges)
+                const bassBins = 8; // Range from ~0-~1.3k Hz
+                const midBins = 24;  // Range from ~1.3k-~5.5k Hz
+                const highBin = 40;  // High frequency point for spawns
+                
+                let bassAvg = 0; for(let i=0; i<bassBins; i++) bassAvg += dataArray[i]; bassAvg /= bassBins;
+                let midAvg = 0; for(let i=bassBins; i<midBins; i++) midAvg += dataArray[i]; midAvg /= midBins;
+                let highVol = dataArray[highBin];
+
+                const bass = bassAvg / 255;
+                const mid = midAvg / 255;
+
+                // --- Common Audio Reactivity ---
+
+                // Pulse Bloom intensity with bass and mid
+                bloomPass.strength = environmentConfigs[currentDimension].bloomParams.strength + (bass * 0.5 + mid * 0.2);
+                
+                // Pulsing light targets (City Scanner/Spotlight)
+                captainScanTarget.position.set(Math.sin(time) * 10, 20, -50 + Math.cos(time) * 5); // Target shifts gently
+
+                // The Captain
+                hoodieMat.emissiveIntensity = 2.0 + (bass * 0.1 + mid * 0.05); // Pulsing hoodie
+
+                // Balloon envelope pulse (subtler)
+                neonMat.emissiveIntensity = 0.5 + (bass * 0.1); 
+                envelope.rotation.z = Math.sin(time * 10) * (bass * 0.0001 + mid * 0.00005); // Subtle shudder with mids
+
+                // -- Common Movement Logic ---
+
+                // Move and Pulse Walls/City Buildings
+                const wallPulseMax = 10.0;
+                walls.forEach(seg => {
+                    seg.z += flightParams.currentSpeed; // Use current variable speed for warp logic
+                    if (seg.z > 50) seg.z = -350; // Loop back
+                    seg.left.position.z = seg.z;
+                    seg.right.position.z = seg.z;
+                    
+                    // Specific reactivity per scene for walls
+                    if (currentDimension === DIMS.CYBERPUNK) {
+                         // Simple pulse inward/outward with bass/mid volume, consistent with previous canyon example logic but using refined variables
+                        seg.left.position.x = -35 + (bass * wallPulseMax + mid * 2.0);
+                        seg.right.position.x = 35 - (bass * wallPulseMax + mid * 2.0);
+                        
+                         // Tilt buildings slightly with mids, refined variables
+                        seg.left.rotation.z = mid * 0.1;
+                        seg.right.rotation.z = -mid * 0.1;
+
+                    } else if (currentDimension === DIMS.ABYSSAL) {
+                         // Jagged walls drift/pulse more strongly, refined variables
+                        seg.left.position.x = -45 + (bass * 12.0 + mid * 3.0);
+                        seg.right.position.x = 45 - (bass * 12.0 + mid * 3.0);
+                        
+                         // Sway rocks gently with mids, refined variables
+                        seg.left.rotation.z = mid * 0.05;
+                        seg.right.rotation.z = -mid * 0.05;
+                    }
+                });
+
+                // --- Abyssal Specific Dynamics ---
+                if (currentDimension === DIMS.ABYSSAL) {
+                    
+                    // Flicker the Spotlight intensity based on refined bass variable
+                    scanLight.intensity = (mid > 0.4) ? 0.8 + (Math.random() - 0.5) * 0.2 : 0.5; // Flicker with mids
+
+                    // Spawning bubbles based on high frequency, similar logic to previous abyssal voyage
+                    if (highVol > 140 && Math.random() > 0.9) {
+                        spawnBubble(highVol);
+                    }
+                    
+                    // Animate bubbles, same logic to previous abyssal voyage but using refined variables
+                    for (let i = bubbles.length - 1; i >= 0; i--) {
+                        bubbles[i].position.z += 1.5;
+                        bubbles[i].position.y += bubbles[i].userData.velocityUp; // Rise up
+                        bubbles[i].position.x += Math.sin(time + i) * 0.1; // Wobble
+                        
+                        // Cull bubbles, same logic to previous abyssal voyage
+                        if (bubbles[i].position.z > 50 || bubbles[i].position.y > 60) {
+                            scene.remove(bubbles[i]);
+                            bubbles.splice(i, 1);
+                        }
+                    }
+
+                    // Gentle sea current sway for refined walls (reuse previous rock sway idea with refined logic if needed, 
+                    // or rely on wall specific logic above - simpler above is better)
+                    // (Additional sway logic removed for simplification)
+                }
+
+                // --- Cyberpunk Specific Dynamics ---
+                if (currentDimension === DIMS.CYBERPUNK) {
+                    
+                    // Pulsing light intensity scanner based on refined bass variable
+                    scanLight.intensity = (bass > 0.6) ? 1.5 + (Math.random() - 0.5) * 0.3 : 1.0; // Pulse searchlight with bass hits
+
+                    // (City river flicker logic removed for simplification)
+                }
+                
+                // --- Premium Effect: Bass-Zoom Camera ---
+                if (bass > 0.85) { // Sharp bass hit
+                    camera.fov = 80; // Sharp FOV increase
+                }
+                // Smoothly lerp camera FOV back to base
+                camera.fov = THREE.MathUtils.lerp(camera.fov, 75, 0.1);
+                camera.updateProjectionMatrix();
+
+                // --- Universal Particle Systems Movement ---
+                const positionsArray = particleGeo.attributes.position.array;
+                for (let i = 0; i < particleConfigs[currentDimension].count; i++) {
+                    positionsArray[i * 3 + 2] += flightParams.currentSpeed; // Drift towards us at current speed
+
+                    // Simple simplified drift movement, for performance over complexity
+                     // particles just drift forward and are recycled, no unique y drift here for simplicity
+                    
+                    // Recycle particles that move too close
+                    if (positionsArray[i * 3 + 2] > 50) {
+                        positionsArray[i * 3] = (Math.random() - 0.5) * 100;
+                        positionsArray[i * 3 + 1] = Math.random() * 50;
+                        positionsArray[i * 3 + 2] = -200 - Math.random() * 100; // Far ahead again
+                    }
+                }
+                particleGeo.attributes.position.needsUpdate = true; // Signal update
+
+            } // end Analyzer check
+
+            composer.render(); // Render through post-processing
+        }
+
+        // --- Event Listeners and Initialization ---
+
+        function initMain() {
+            updateEnvironment(DIMS.CYBERPUNK); // Initial State
+            animate(); // Start loop
+        }
+
+        // UI Interactions
+        document.getElementById('startBtn').addEventListener('click', () => {
+             document.getElementById('startBtn').textContent = "SETTING UP AUDIO...";
+             setupMic(); // Try mic setup on interaction
+        });
+
+        document.getElementById('shiftBtn').addEventListener('click', transitionDimension);
+
+        window.onresize = () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight); // Essential for post-processing
+        };
+
+    </script>
+</body>
+</html>
