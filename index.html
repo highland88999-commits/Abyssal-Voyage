@@ -3,35 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Omni-Voyage: Living World</title>
+    <title>Omni-Voyage: Apex Edition</title>
     <style>
-        body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', monospace; }
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', monospace; user-select: none; }
         #overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             z-index: 1000; display: flex; flex-direction: column; 
-            justify-content: center; align-items: center;
-            background: rgba(0,0,0,0.9); color: #fff;
+            justify-content: center; align-items: center; gap: 15px;
+            background: rgba(0,0,0,0.95); color: #fff; transition: opacity 0.5s;
         }
-        #ui {
-            position: absolute; top: 20px; right: 20px; color: #fff; 
-            background: rgba(0,0,0,0.5); padding: 10px; border-radius: 5px;
-            pointer-events: none; text-align: right;
+        h1 { letter-spacing: 5px; color: #00f2ff; text-shadow: 0 0 10px #00f2ff; text-align: center; }
+        
+        .btn-group { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
+        button { 
+            padding: 15px 30px; font-size: 16px; cursor: pointer; 
+            background: rgba(0, 242, 255, 0.1); color: #00f2ff; border: 1px solid #00f2ff; 
+            font-weight: bold; transition: 0.3s; text-transform: uppercase;
         }
-        button { padding: 15px 30px; font-size: 18px; cursor: pointer; background: #00f2ff; border: none; font-weight: bold; }
+        button:hover { background: #00f2ff; color: #000; box-shadow: 0 0 15px #00f2ff; }
+
+        #ui-panel {
+            position: absolute; top: 20px; right: 20px; color: #00f2ff; 
+            background: rgba(0,10,20,0.8); padding: 15px; border: 1px solid #00f2ff;
+            border-radius: 8px; pointer-events: none; text-align: right; z-index: 100;
+            text-shadow: 0 0 5px #00f2ff; line-height: 1.5;
+        }
+        
+        #controls {
+            position: absolute; bottom: 20px; left: 20px; z-index: 100; display: flex; flex-direction: column; gap: 10px;
+        }
+        #audioControls { display: none; background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid #00f2ff; border-radius: 8px; }
+        audio { outline: none; filter: invert(100%) hue-rotate(180deg); } /* Styles default audio player to match theme */
     </style>
 </head>
 <body>
 
     <div id="overlay">
-        <h1>OMNI-VOYAGE</h1>
-        <p>Double Tap to Boost Speed</p>
-        <button id="startBtn">START ENGINE</button>
+        <h1>OMNI-VOYAGE<br><span style="font-size: 0.5em; color: #ffaa00;">APEX EDITION</span></h1>
+        <p style="color: #aaa;">Double-Tap Screen to Boost Speed | System syncs to real-world time</p>
+        
+        <div class="btn-group">
+            <button id="micBtn">INIT: MICROPHONE</button>
+            <button id="fileBtn">INIT: LOCAL MP3</button>
+        </div>
+        <input type="file" id="audioUpload" accept="audio/*" style="display: none;">
     </div>
 
-    <div id="ui">
+    <div id="ui-panel">
         <div id="clock">TIME: --:--</div>
-        <div id="weather">WEATHER: CLEAR</div>
+        <div id="weather">WEATHER: SYNCING...</div>
+        <div id="sector">SECTOR: OVERWORLD</div>
         <div id="speed">WARP: 1x</div>
+    </div>
+
+    <div id="controls">
+        <button id="shiftBtn" style="background: #ffaa00; color: #000; border-color: #ffaa00;">DIMENSIONAL SHIFT</button>
+        <div id="audioControls">
+            <audio id="audioPlayer" controls></audio>
+        </div>
     </div>
 
     <script type="importmap">
@@ -48,83 +77,188 @@
         import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
         import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
         import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+        import { GlitchPass } from 'three/examples/jsm/postprocessing/GlitchPass.js';
 
-        let scene, camera, renderer, composer, bloomPass, analyzer, dataArray;
-        let starField, grassField, rainParticles, snowParticles, sun;
+        // Core Variables
+        let scene, camera, renderer, composer, bloomPass, glitchPass;
+        let audioCtx, analyzer, dataArray, mediaSource;
+        const audioElement = document.getElementById('audioPlayer');
+        
+        // World Objects
+        let starField, grassField, sun, rainParticles, snowParticles;
+        let glassTanks = [], seaLife = [], balloonGroup, hoodieMat, neonMat, glassMat;
+        
+        // State
         let lastTap = 0, speedMultiplier = 1.0;
         let isNight = false, isRaining = false, isSnowing = false;
+        let currentSector = 'OVERWORLD';
 
-        async function init() {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const audioCtx = new AudioContext();
-            const source = audioCtx.createMediaStreamSource(stream);
-            analyzer = audioCtx.createAnalyser();
-            analyzer.fftSize = 256;
-            source.connect(analyzer);
-            dataArray = new Uint8Array(analyzer.frequencyBinCount);
-
-            document.getElementById('overlay').style.display = 'none';
-            setupScene();
+        // --- Audio Routing ---
+        async function initMic() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                setupAudioNodes();
+                mediaSource = audioCtx.createMediaStreamSource(stream);
+                mediaSource.connect(analyzer); // No destination connect = no mic feedback
+                startGame();
+            } catch (err) {
+                alert("Microphone denied. Please use LOCAL MP3.");
+            }
         }
 
+        function initFileClick() { document.getElementById('audioUpload').click(); }
+
+        document.getElementById('audioUpload').addEventListener('change', function() {
+            if (this.files.length === 0) return;
+            const fileURL = URL.createObjectURL(this.files[0]);
+            audioElement.src = fileURL;
+            audioElement.play();
+            document.getElementById('audioControls').style.display = 'block';
+
+            setupAudioNodes();
+            if (!mediaSource) {
+                mediaSource = audioCtx.createMediaElementSource(audioElement);
+                mediaSource.connect(analyzer);
+                analyzer.connect(audioCtx.destination); // Output to speakers
+            }
+            startGame();
+        });
+
+        function setupAudioNodes() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                analyzer = audioCtx.createAnalyser();
+                analyzer.fftSize = 256;
+                dataArray = new Uint8Array(analyzer.frequencyBinCount);
+            }
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function startGame() {
+            document.getElementById('overlay').style.opacity = '0';
+            setTimeout(() => document.getElementById('overlay').style.display = 'none', 500);
+            if(!scene) setupScene();
+        }
+
+        // --- Scene Construction ---
         function setupScene() {
             scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x00050a, 0.015);
+            
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 10, 40);
+            camera.position.set(0, 8, 35);
 
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
 
+            // Post-Processing
             composer = new EffectComposer(renderer);
             composer.addPass(new RenderPass(scene, camera));
-            bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.5, 0.4, 0.85);
+            bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.2, 0.4, 0.85);
             composer.addPass(bloomPass);
+            glitchPass = new GlitchPass();
+            glitchPass.enabled = false;
+            composer.addPass(glitchPass);
 
-            // 1. STARFIELD (Above)
-            const starGeo = new THREE.BufferGeometry();
-            const starCoords = [];
-            for(let i=0; i<2000; i++) {
-                starCoords.push((Math.random()-0.5)*400, 50 + Math.random()*100, (Math.random()-0.5)*400);
-            }
-            starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starCoords, 3));
-            starField = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.5 }));
-            scene.add(starField);
-
-            // 2. GRASS (Below)
-            const grassGeo = new THREE.PlaneGeometry(200, 400, 50, 50);
-            const grassMat = new THREE.MeshStandardMaterial({ color: 0x113311, wireframe: true });
-            grassField = new THREE.Mesh(grassGeo, grassMat);
-            grassField.rotation.x = -Math.PI / 2;
-            scene.add(grassField);
-
-            // 3. SUN / DAYLIGHT
-            sun = new THREE.DirectionalLight(0xffffcc, 1);
+            // Lighting
+            sun = new THREE.DirectionalLight(0xffddaa, 1.5);
             sun.position.set(0, 100, -50);
             scene.add(sun);
-            scene.add(new THREE.AmbientLight(0xffffff, 0.2));
+            scene.add(new THREE.AmbientLight(0x002244, 0.5));
 
-            // 4. WEATHER SYSTEMS
-            rainParticles = createParticles(0xaaaaFF, 5000, 0.2);
-            snowParticles = createParticles(0xffffff, 8000, 0.4);
+            buildEnvironment();
 
+            // Interaction
             window.addEventListener('touchstart', handleDoubleTap);
             window.addEventListener('mousedown', handleDoubleTap);
+            document.getElementById('shiftBtn').addEventListener('click', jumpSector);
             
             animate();
         }
 
-        function createParticles(color, count, size) {
+        function buildEnvironment() {
+            // 1. Stars
+            const starGeo = new THREE.BufferGeometry();
+            const starCoords = [];
+            for(let i=0; i<2000; i++) starCoords.push((Math.random()-0.5)*400, 40 + Math.random()*150, (Math.random()-0.5)*400);
+            starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starCoords, 3));
+            starField = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.6 }));
+            scene.add(starField);
+
+            // 2. Grass
+            const grassGeo = new THREE.PlaneGeometry(200, 400, 40, 40);
+            const grassMat = new THREE.MeshStandardMaterial({ color: 0x00ff88, wireframe: true, transparent: true, opacity: 0.4 });
+            grassField = new THREE.Mesh(grassGeo, grassMat);
+            grassField.rotation.x = -Math.PI / 2;
+            grassField.position.y = -2;
+            scene.add(grassField);
+
+            // 3. Aquarium Tanks
+            const tankGeo = new THREE.BoxGeometry(12, 60, 100); 
+            glassMat = new THREE.MeshStandardMaterial({ 
+                color: 0x00ffff, metalness: 0.9, roughness: 0.1, transparent: true, opacity: 0.25, side: THREE.DoubleSide 
+            });
+
+            for (let i = 0; i < 4; i++) {
+                let left = new THREE.Mesh(tankGeo, glassMat);
+                left.position.set(-35, 25, -i * 100);
+                scene.add(left);
+                
+                let right = new THREE.Mesh(tankGeo, glassMat);
+                right.position.set(35, 25, -i * 100);
+                scene.add(right);
+                
+                glassTanks.push(left, right);
+                spawnFish(left.position);
+                spawnFish(right.position);
+            }
+
+            // 4. Captain
+            balloonGroup = new THREE.Group();
+            neonMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x00ffff, wireframe: true });
+            const env = new THREE.Mesh(new THREE.IcosahedronGeometry(5, 2), neonMat);
+            env.scale.set(1, 1.4, 1);
+            balloonGroup.add(env);
+
+            hoodieMat = new THREE.MeshStandardMaterial({ color: 0xffaa00, emissive: 0xffaa00, emissiveIntensity: 2 });
+            const cap = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.2, 0.4), hoodieMat);
+            cap.position.y = -6.5;
+            balloonGroup.add(cap);
+            scene.add(balloonGroup);
+
+            // 5. Weather
+            rainParticles = createWeather(0xaaaaFF, 5000, 0.3);
+            snowParticles = createWeather(0xffffff, 8000, 0.5);
+        }
+
+        function createWeather(color, count, size) {
             const geo = new THREE.BufferGeometry();
             const pos = [];
             for(let i=0; i<count; i++) pos.push((Math.random()-0.5)*200, Math.random()*100, (Math.random()-0.5)*200);
             geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-            const points = new THREE.Points(geo, new THREE.PointsMaterial({ color, size, transparent: true, opacity: 0 }));
-            scene.add(points);
-            return points;
+            const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color, size, transparent: true, opacity: 0 }));
+            scene.add(pts);
+            return pts;
         }
 
+        function spawnFish(tankPos) {
+            for (let i = 0; i < 6; i++) {
+                const fish = new THREE.Mesh(
+                    new THREE.ConeGeometry(0.5, 1.5, 4), 
+                    new THREE.MeshBasicMaterial({ color: new THREE.Color().setHSL(Math.random(), 1, 0.6) })
+                );
+                fish.position.set(tankPos.x + (Math.random() - 0.5) * 6, tankPos.y + (Math.random() - 0.5) * 40, tankPos.z + (Math.random() - 0.5) * 80);
+                fish.rotation.x = Math.PI / 2;
+                fish.userData = { offset: Math.random() * Math.PI * 2 };
+                scene.add(fish);
+                seaLife.push(fish);
+            }
+        }
+
+        // --- Logic & Mechanics ---
         function handleDoubleTap(e) {
+            if(e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
             const now = Date.now();
             if (now - lastTap < 300) {
                 speedMultiplier = (speedMultiplier >= 5) ? 1.0 : speedMultiplier + 1.0;
@@ -133,27 +267,55 @@
             lastTap = now;
         }
 
-        function updateEnvironment() {
+        function jumpSector() {
+            glitchPass.enabled = true;
+            setTimeout(() => {
+                currentSector = (currentSector === 'OVERWORLD') ? 'ABYSSAL' : 'OVERWORLD';
+                document.getElementById('sector').innerText = `SECTOR: ${currentSector}`;
+                
+                if(currentSector === 'ABYSSAL') {
+                    scene.fog.color.setHex(0x000205); // Deep dark water
+                    glassMat.color.setHex(0xff00ff); // Pinkish glass
+                    neonMat.color.setHex(0xff00ff);
+                    neonMat.emissive.setHex(0xff00ff);
+                    grassField.material.color.setHex(0x00ffff); // Bioluminescent grass
+                } else {
+                    scene.fog.color.setHex(0x00050a); 
+                    glassMat.color.setHex(0x00ffff);
+                    neonMat.color.setHex(0x00ffff);
+                    neonMat.emissive.setHex(0x00ffff);
+                    grassField.material.color.setHex(0x00ff88);
+                }
+                glitchPass.enabled = false;
+            }, 600);
+        }
+
+        function updateRealWorldLogic() {
             const now = new Date();
             const mins = now.getMinutes();
             const hours = now.getHours();
-            const month = now.getMonth(); // 0-11
+            const month = now.getMonth(); 
             const date = now.getDate();
 
-            // Day/Night Logic (Night: 8pm - 6am)
-            isNight = (hours >= 20 || hours < 6);
-            scene.background = new THREE.Color(isNight ? 0x000000 : 0x87CEEB);
-            sun.intensity = isNight ? 0 : 1;
-            starField.material.opacity = isNight ? 1 : 0;
+            isNight = (hours >= 19 || hours < 6);
+            if(currentSector === 'OVERWORLD') {
+                scene.background = new THREE.Color(isNight ? 0x000511 : 0x87CEEB);
+                sun.intensity = isNight ? 0 : 1.5;
+            } else {
+                scene.background = new THREE.Color(0x000000); // Abyss is always dark
+                sun.intensity = 0.2;
+            }
+            starField.material.opacity = isNight || currentSector === 'ABYSSAL' ? 1 : 0;
 
-            // Rain Logic (Once an hour for 10 mins)
+            // Weather Cycles
             isRaining = (mins >= 0 && mins < 10);
             rainParticles.material.opacity = isRaining ? 0.6 : 0;
 
-            // Snow Logic (Every 4 months for 2 weeks)
-            // Example: Months 0 (Jan), 4 (May), 8 (Sept)
             isSnowing = (month % 4 === 0 && date <= 14);
             snowParticles.material.opacity = isSnowing ? 1 : 0;
+
+            // Force grass white if snowing
+            if(isSnowing) grassField.material.color.setHex(0xffffff);
 
             document.getElementById('weather').innerText = `WEATHER: ${isSnowing ? 'SNOW' : (isRaining ? 'RAIN' : 'CLEAR')}`;
             document.getElementById('clock').innerText = `TIME: ${hours.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}`;
@@ -161,40 +323,76 @@
 
         function animate() {
             requestAnimationFrame(animate);
-            updateEnvironment();
+            updateRealWorldLogic();
             
+            let bass = 0, mid = 0;
             if (analyzer) {
                 analyzer.getByteFrequencyData(dataArray);
-                const bass = dataArray[2] / 255;
-                const scrollSpeed = (1.0 + (bass * 2)) * speedMultiplier;
-
-                // Move environment
-                grassField.position.z += scrollSpeed;
-                if(grassField.position.z > 100) grassField.position.z = 0;
-
-                if(isRaining) {
-                    const rainPos = rainParticles.geometry.attributes.position.array;
-                    for(let i=1; i<rainPos.length; i+=3) {
-                        rainPos[i] -= 2;
-                        if(rainPos[i] < 0) rainPos[i] = 100;
-                    }
-                    rainParticles.geometry.attributes.position.needsUpdate = true;
-                }
-
-                if(isSnowing) {
-                    const snowPos = snowParticles.geometry.attributes.position.array;
-                    for(let i=1; i<snowPos.length; i+=3) {
-                        snowPos[i] -= 0.5;
-                        if(snowPos[i] < 0) snowPos[i] = 100;
-                    }
-                    snowParticles.geometry.attributes.position.needsUpdate = true;
-                }
+                bass = dataArray[2] / 255;
+                mid = dataArray[15] / 255;
             }
+
+            const baseSpeed = 1.0;
+            const totalSpeed = (baseSpeed + (bass * 3)) * speedMultiplier;
+
+            // 1. Scroll Grass
+            grassField.position.z += totalSpeed;
+            if(grassField.position.z > 100) grassField.position.z = 0;
+
+            // 2. Scroll Tanks
+            glassTanks.forEach(tank => {
+                tank.position.z += totalSpeed;
+                tank.position.x += Math.sin(Date.now() * 0.005) * (bass * 0.2); // Vibrate on bass
+                if (tank.position.z > 100) tank.position.z = -300;
+            });
+
+            // 3. Swim Fish
+            seaLife.forEach(fish => {
+                fish.position.z += totalSpeed + (bass * 2); 
+                fish.position.y += Math.sin(Date.now() * 0.002 + fish.userData.offset) * 0.05;
+                if (fish.position.z > 100) fish.position.z = -300;
+            });
+
+            // 4. Warp Stars
+            const starPos = starField.geometry.attributes.position.array;
+            for(let i=2; i<starPos.length; i+=3) {
+                starPos[i] += (totalSpeed * 2);
+                if(starPos[i] > 100) starPos[i] = -400;
+            }
+            starField.geometry.attributes.position.needsUpdate = true;
+
+            // 5. Weather Animation
+            if(isRaining) {
+                const rainPos = rainParticles.geometry.attributes.position.array;
+                for(let i=1; i<rainPos.length; i+=3) { rainPos[i] -= 2; if(rainPos[i] < 0) rainPos[i] = 100; }
+                rainParticles.geometry.attributes.position.needsUpdate = true;
+            }
+            if(isSnowing) {
+                const snowPos = snowParticles.geometry.attributes.position.array;
+                for(let i=1; i<snowPos.length; i+=3) { snowPos[i] -= 0.5; if(snowPos[i] < 0) snowPos[i] = 100; }
+                snowParticles.geometry.attributes.position.needsUpdate = true;
+            }
+
+            // 6. Captain Reactivity
+            bloomPass.strength = 1.0 + (bass * 2.5);
+            hoodieMat.emissiveIntensity = 2 + (mid * 8);
+            balloonGroup.position.y = 6 + Math.sin(Date.now() * 0.002) * 1.2;
 
             composer.render();
         }
 
-        document.getElementById('startBtn').addEventListener('click', init);
+        // Setup Buttons
+        document.getElementById('micBtn').addEventListener('click', initMic);
+        document.getElementById('fileBtn').addEventListener('click', initFileClick);
+        
+        window.onresize = () => {
+            if(camera && renderer) {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                composer.setSize(window.innerWidth, window.innerHeight);
+            }
+        };
     </script>
 </body>
 </html>
