@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -13,48 +13,18 @@
             background: rgba(0,0,0,0.95); color: #fff; transition: opacity 0.5s;
         }
         h1 { letter-spacing: 5px; color: #00f2ff; text-shadow: 0 0 10px #00f2ff; text-align: center; margin-bottom: 0;}
-        
-        /* Payment & Access Styling */
         #access-gate { display: flex; flex-direction: column; align-items: center; gap: 20px; }
         .payment-links { display: flex; gap: 10px; margin-top: 10px; }
-        .pay-btn { background: #ffaa00 !important; color: #000 !important; border-color: #ffaa00 !important; text-decoration: none; padding: 10px 20px; font-weight: bold; font-size: 14px; }
-        #passField { background: #000; border: 1px solid #333; color: #333; text-align: center; padding: 5px; margin-top: 10px; outline: none; }
-        #passField:focus { border-color: #00f2ff; color: #00f2ff; }
-
+        .pay-btn { background: #ffaa00 !important; color: #000 !important; border-color: #ffaa00 !important; text-decoration: none; padding: 10px 20px; font-weight: bold; font-size: 14px; border: 1px solid transparent; }
+        #passField { background: #000; border: 1px solid #333; color: #333; text-align: center; padding: 10px; margin-top: 10px; outline: none; }
         #game-setup { display: none; flex-direction: column; align-items: center; gap: 15px; }
-        
-        #usernameInput {
-            padding: 10px; font-size: 18px; font-family: 'Courier New', monospace;
-            background: rgba(0, 242, 255, 0.1); color: #00f2ff; border: 1px solid #00f2ff;
-            text-align: center; width: 250px; text-transform: uppercase; outline: none;
-        }
-        
-        #leaderboard {
-            background: rgba(0, 10, 20, 0.8); border: 1px solid #ffaa00; padding: 15px;
-            border-radius: 8px; color: #ffaa00; width: 250px; text-align: left; font-size: 14px;
-        }
-        #leaderboard h3 { margin: 0 0 10px 0; text-align: center; border-bottom: 1px solid #ffaa00; padding-bottom: 5px;}
-        #leaderboard p { margin: 5px 0; display: flex; justify-content: space-between; }
-
+        #usernameInput { padding: 10px; font-size: 18px; background: rgba(0, 242, 255, 0.1); color: #00f2ff; border: 1px solid #00f2ff; text-align: center; width: 250px; outline: none; }
         .btn-group { display: flex; gap: 15px; flex-wrap: wrap; justify-content: center; }
-        button { 
-            padding: 15px 30px; font-size: 16px; cursor: pointer; 
-            background: rgba(0, 242, 255, 0.1); color: #00f2ff; border: 1px solid #00f2ff; 
-            font-weight: bold; transition: 0.3s; text-transform: uppercase;
-        }
-        button:hover { background: #00f2ff; color: #000; box-shadow: 0 0 15px #00f2ff; }
-
-        #ui-panel {
-            position: absolute; top: 20px; right: 20px; color: #00f2ff; 
-            background: rgba(0,10,20,0.8); padding: 15px; border: 1px solid #00f2ff;
-            border-radius: 8px; pointer-events: none; text-align: right; z-index: 100;
-            text-shadow: 0 0 5px #00f2ff; line-height: 1.5;
-        }
+        button { padding: 15px 30px; font-size: 16px; cursor: pointer; background: rgba(0, 242, 255, 0.1); color: #00f2ff; border: 1px solid #00f2ff; font-weight: bold; transition: 0.3s; }
+        button:hover { background: #00f2ff; color: #000; }
+        #ui-panel { position: absolute; top: 20px; right: 20px; color: #00f2ff; background: rgba(0,10,20,0.8); padding: 15px; border: 1px solid #00f2ff; border-radius: 8px; pointer-events: none; text-align: right; z-index: 100; }
         #controls { position: absolute; bottom: 20px; left: 20px; z-index: 100; display: flex; flex-direction: column; gap: 10px; }
-        #audioControls { display: none; background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid #00f2ff; border-radius: 8px; }
-        
-        .hit-flash { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: red; opacity: 0; pointer-events: none; transition: opacity 0.1s; z-index: 500; }
-        #yt-player { position: absolute; visibility: hidden; pointer-events: none; }
+        .hit-flash { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: red; opacity: 0; pointer-events: none; z-index: 500; }
     </style>
 </head>
 <body>
@@ -70,23 +40,16 @@
             <div style="text-align: center; border: 1px solid #444; padding: 20px;">
                 <p style="margin-top:0;">ACCESS RESTRICTED: CONTRIBUTION REQUIRED</p>
                 <div class="payment-links">
-                    <a href="https://nowpayments.io/embeds/payment-widget?iid=6408965121" target="_blank" class="pay-btn">CRYPTO PAY</a>
-                    <a href="https://buy.stripe.com/7sY3cu6bBfpia1e3OOcIE02" target="_blank" class="pay-btn">STRIPE PAY</a>
+                    <a href="#" class="pay-btn">CRYPTO PAY</a>
+                    <a href="#" class="pay-btn">STRIPE PAY</a>
                 </div>
-                <input type="password" id="passField" placeholder="DEVELOPER KEY">
+                <input type="password" id="passField" placeholder="DEVELOPER KEY (try 'reef')">
             </div>
         </div>
 
         <div id="game-setup">
             <input type="text" id="usernameInput" placeholder="ENTER CALL-SIGN" maxlength="12">
-            
-            <div id="leaderboard">
-                <h3>NEXUS ARCHIVES</h3>
-                <div id="lb-content">No records found.</div>
-            </div>
-
             <div class="btn-group">
-                <button id="ytBtn" style="border-color: #ff00ff; color: #ff00ff;">INIT: PRELOAD [YT]</button>
                 <button id="micBtn">INIT: MIC</button>
                 <button id="fileBtn">INIT: LOCAL MP3</button>
             </div>
@@ -97,15 +60,12 @@
     <div id="ui-panel">
         <div id="livesStat" style="color: #ff0055; font-weight: bold;">LIVES: 100</div>
         <div id="distStat" style="color: #00ff88;">DIST: 0m</div>
-        <div id="clock">TIME: --:--</div>
         <div id="eventDisplay" style="color: #ffaa00;">EVENT: CLEAR</div>
-        <div id="sector">SECTOR: OVERWORLD</div>
     </div>
 
     <div id="controls">
-        <button id="shiftBtn" style="background: #ffaa00; color: #000; border-color: #ffaa00;">DIMENSION SHIFT</button>
         <button id="skipBtn" style="background: #ff00ff; color: #000; border-color: #ff00ff;">>> FF EVENT</button>
-        <div id="audioControls"><audio id="audioPlayer" controls></audio></div>
+        <audio id="audioPlayer" style="display:none"></audio>
     </div>
 
     <script type="importmap">
@@ -126,60 +86,40 @@
         let scene, camera, renderer, composer, bloomPass;
         let audioCtx, analyzer, dataArray, mediaSource;
         const audioElement = document.getElementById('audioPlayer');
-        let ytPlayer;
         
-        // State
-        let lives = 100, distance = 0, callSign = "UNKNOWN";
-        let isInvulnerable = false, isGameOver = false;
-        let currentSector = 'OVERWORLD', timeOffset = 0;
-        let skipHistory = [];
+        // Game State
+        let lives = 100, distance = 0, isGameOver = false, isInvulnerable = false;
+        let currentX = 0, targetX = 0, timeOffset = 0, skipHistory = [];
+        
+        // Objects
+        let balloonGroup, grassField, floodPlane, waveMesh;
+        let obstacles = [], crows = [], floatingRocks = [];
+        let rain, hail, meteors, scarabs, camoMat;
 
-        // --- Payment & Dev Logic ---
-        const passField = document.getElementById('passField');
-        passField.addEventListener('input', (e) => {
+        // --- Gate Logic ---
+        document.getElementById('passField').addEventListener('input', (e) => {
             if(e.target.value.toLowerCase() === 'reef') {
                 document.getElementById('access-gate').style.display = 'none';
                 document.getElementById('game-setup').style.display = 'flex';
-                passField.value = "";
             }
         });
 
-        // --- YouTube Preload Integration ---
-        const tag = document.createElement('script');
-        tag.src = "https://www.youtube.com/iframe_api";
-        document.head.appendChild(tag);
+        // --- Audio Setup ---
+        async function setupAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                analyzer = audioCtx.createAnalyser();
+                analyzer.fftSize = 256;
+                dataArray = new Uint8Array(analyzer.frequencyBinCount);
+            }
+            if (audioCtx.state === 'suspended') await audioCtx.resume();
+        }
 
-        window.onYouTubeIframeAPIReady = () => {
-            ytPlayer = new YT.Player('yt-player', {
-                height: '0', width: '0',
-                videoId: 'FLzs6kuR7eE',
-                events: { 'onStateChange': (e) => { if(e.data === 1) startGame(); } }
-            });
-        };
-
-        document.getElementById('ytBtn').addEventListener('click', () => {
-            callSign = document.getElementById('usernameInput').value || "VOYAGER";
-            ytPlayer.playVideo();
-            setupAudioNodes();
-            // Since we can't route YT audio through WebAudio easily due to CORS, 
-            // we simulate bass patterns based on the track's known tempo/energy
-        });
-
-        // --- Local File Selector Fix ---
-        const fileBtn = document.getElementById('fileBtn');
-        const fileInput = document.getElementById('audioUpload');
-        
-        fileBtn.addEventListener('click', () => fileInput.click());
-        
-        fileInput.addEventListener('change', async function() {
-            if (this.files.length === 0) return;
-            callSign = document.getElementById('usernameInput').value || "VOYAGER";
-            
+        document.getElementById('fileBtn').addEventListener('click', () => document.getElementById('audioUpload').click());
+        document.getElementById('audioUpload').addEventListener('change', async function() {
+            await setupAudio();
             const url = URL.createObjectURL(this.files[0]);
             audioElement.src = url;
-            document.getElementById('audioControls').style.display = 'block';
-            
-            setupAudioNodes();
             if (!mediaSource) {
                 mediaSource = audioCtx.createMediaElementSource(audioElement);
                 mediaSource.connect(analyzer);
@@ -189,124 +129,110 @@
             startGame();
         });
 
-        // --- Skip Rate Limiting (12 per 20 mins) ---
-        document.getElementById('skipBtn').addEventListener('click', () => {
-            const now = Date.now();
-            const twentyMins = 20 * 60 * 1000;
-            
-            // Filter history to only keep skips within the last 20 mins
-            skipHistory = skipHistory.filter(time => now - time < twentyMins);
-            
-            if(skipHistory.length < 12) {
-                timeOffset += 10 * 60000;
-                skipHistory.push(now);
-                console.log(`Skips used: ${skipHistory.length}/12`);
-            } else {
-                alert("TIME DISTORTION LIMIT REACHED: Wait for sector cooldown.");
-            }
+        document.getElementById('micBtn').addEventListener('click', async () => {
+            await setupAudio();
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            const source = audioCtx.createMediaStreamSource(stream);
+            source.connect(analyzer);
+            startGame();
         });
 
-        // --- Core Engine (Refined) ---
-        function setupAudioNodes() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                analyzer = audioCtx.createAnalyser();
-                analyzer.fftSize = 256;
-                dataArray = new Uint8Array(analyzer.frequencyBinCount);
-            }
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-        }
-
+        // --- Core Engine ---
         function startGame() {
             document.getElementById('overlay').style.opacity = '0';
             setTimeout(() => document.getElementById('overlay').style.display = 'none', 500);
-            if(!scene) setupScene();
+            initScene();
         }
 
-        // ... [Rest of the Three.js Environment, Build, and Animation Logic from your provided code] ...
-        // (Include all functions: setupScene, buildEnvironment, buildWeather, runMasterCycle, animate, etc.)
-        
-        // Re-injecting the animate loop logic to handle the YT simulation if active
-        function animate() {
-            if (isGameOver) return;
-            requestAnimationFrame(animate);
-            
-            let bass = 0;
-            if (analyzer) {
-                analyzer.getByteFrequencyData(dataArray);
-                bass = dataArray[2] / 255;
-            } else if (ytPlayer && ytPlayer.getPlayerState() === 1) {
-                // Simulation for YT Preload
-                bass = (Math.sin(Date.now() * 0.008) * 0.5 + 0.5) * 0.6;
-            }
-
-            // ... [Include the rest of the animate logic here to ensure the ship moves, 
-            //      collisions work, and sectors cycle as per your original code] ...
-        }
-
-        // Required setup calls from original code
-        function setupScene() {
+        function initScene() {
             scene = new THREE.Scene();
             scene.fog = new THREE.FogExp2(0x00050a, 0.008);
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1500);
+            
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1500);
             camera.position.set(0, 10, 40);
+
             renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
+
             composer = new EffectComposer(renderer);
             composer.addPass(new RenderPass(scene, camera));
             bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.0, 0.4, 0.85);
             composer.addPass(bloomPass);
-            // ... (Rest of build calls)
+
+            buildEnvironment();
+            window.addEventListener('pointermove', (e) => {
+                targetX = (e.clientX / window.innerWidth - 0.5) * 60;
+            });
             animate();
         }
-        
-        // Note: Ensure all 'build' functions from your original source are pasted back in here
-        // to complete the environment!
-    </script>
-</body>
-</html>
 
-                        // Spawn Debris
-                        for(let i=0; i<30; i++) {
-                            const rGeo = new THREE.DodecahedronGeometry(2 + Math.random()*2);
-                            const rMat = new THREE.MeshStandardMaterial({ color: 0x334455 });
-                            const fRock = new THREE.Mesh(rGeo, rMat);
-                            fRock.position.set((Math.random()-0.5)*150, 5, -Math.random()*500);
-                            scene.add(fRock);
-                            floatingRocks.push(fRock);
-                        }
-                    }
-                } else if (waveMesh.position.z >= 20) {
-                    waveMesh.visible = false;
-                }
+        function buildEnvironment() {
+            // Ground
+            const gGeo = new THREE.PlaneGeometry(1000, 1000, 50, 50);
+            const gMat = new THREE.MeshStandardMaterial({ color: 0x050505, wireframe: true });
+            grassField = new THREE.Mesh(gGeo, gMat);
+            grassField.rotation.x = -Math.PI/2;
+            scene.add(grassField);
 
-                // Bob floating rocks
-                floatingRocks.forEach((fr, idx) => {
-                    fr.position.y = floodPlane.position.y + 1 + Math.sin(Date.now()*0.003 + idx) * 1.5;
-                    fr.position.z += speed;
-                    if(fr.position.z > 50) fr.position.z = -500;
-                    
-                    if (Math.abs(fr.position.z - balloonGroup.position.z) < 5 && Math.abs(fr.position.x - balloonGroup.position.x) < 4) {
-                        takeDamage();
-                    }
-                });
+            // Balloon/Ship
+            balloonGroup = new THREE.Group();
+            const shipGeo = new THREE.ConeGeometry(2, 5, 4);
+            camoMat = new THREE.MeshStandardMaterial({ color: 0x00f2ff, emissive: 0x00f2ff });
+            const ship = new THREE.Mesh(shipGeo, camoMat);
+            ship.rotation.x = Math.PI;
+            balloonGroup.add(ship);
+            scene.add(balloonGroup);
 
-            }
-            else if (elapsedMins >= 80 && elapsedMins < 90) { 
-                currentEvent = 'METEORS'; meteors.material.opacity = 1; 
-                floodPlane.position.y += (-10 - floodPlane.position.y) * 0.05; // Drain
-                waveActive = false; waveMesh.visible = false;
-                floatingRocks.forEach(r => scene.remove(r)); floatingRocks = [];
-            }
-            else if (elapsedMins >= 100 && elapsedMins < 110) { currentEvent = 'SCARABS'; scarabs.material.opacity = 1; }
-            else { 
-                floodPlane.position.y += (-10 - floodPlane.position.y) * 0.1; 
-                waveActive = false; waveMesh.visible = false;
-                floatingRocks.forEach(r => scene.remove(r)); floatingRocks = [];
+            // Lighting
+            const sun = new THREE.DirectionalLight(0xffffff, 1);
+            sun.position.set(10, 50, 10);
+            scene.add(sun);
+            scene.add(new THREE.AmbientLight(0x404040));
+
+            // Obstacles
+            for(let i=0; i<20; i++) {
+                const oGeo = new THREE.BoxGeometry(4, 8, 4);
+                const oMat = new THREE.MeshStandardMaterial({ color: 0xff0055 });
+                const obs = new THREE.Mesh(oGeo, oMat);
+                obs.position.set((Math.random()-0.5)*100, 4, -Math.random()*800);
+                obstacles.push(obs);
+                scene.add(obs);
             }
 
-            document.getElementById('eventDisplay').innerText = `EVENT: ${currentEvent} (${Math.floor(elapsedMins)}m/120m)`;
+            // Weather (Placeholders)
+            const pGeo = new THREE.BufferGeometry();
+            const pMat = new THREE.PointsMaterial({ size: 0.5, color: 0xffffff, transparent: true, opacity: 0 });
+            rain = new THREE.Points(pGeo, pMat); 
+            scene.add(rain);
+            
+            // Required for logic later
+            floodPlane = new THREE.Mesh(new THREE.PlaneGeometry(500,500), new THREE.MeshStandardMaterial({color: 0x0055ff, transparent:true, opacity:0.5}));
+            floodPlane.rotation.x = -Math.PI/2;
+            floodPlane.position.y = -10;
+            scene.add(floodPlane);
+            
+            const wGeo = new THREE.BoxGeometry(200, 10, 10);
+            waveMesh = new THREE.Mesh(wGeo, new THREE.MeshStandardMaterial({color: 0xffffff}));
+            waveMesh.visible = false;
+            scene.add(waveMesh);
+        }
+
+        function takeDamage() {
+            if (isInvulnerable || isGameOver) return;
+            lives -= 1;
+            document.getElementById('livesStat').innerText = `LIVES: ${lives}`;
+            document.getElementById('flash').style.opacity = '0.5';
+            setTimeout(() => document.getElementById('flash').style.opacity = '0', 100);
+            
+            isInvulnerable = true;
+            setTimeout(() => isInvulnerable = false, 1000);
+            
+            if (lives <= 0) {
+                isGameOver = true;
+                alert("NEXUS COLLAPSED. DISTANCE: " + Math.floor(distance) + "m");
+                location.reload();
+            }
         }
 
         function animate() {
@@ -319,81 +245,40 @@
                 bass = dataArray[2] / 255;
             }
 
-            // Steer & Zoom
+            const speed = 1.5 + (bass * 4);
+            distance += speed * 0.1;
+            document.getElementById('distStat').innerText = `DIST: ${Math.floor(distance)}m`;
+
+            // Movement
             currentX += (targetX - currentX) * 0.1;
             balloonGroup.position.x = currentX;
             balloonGroup.rotation.z = -currentX * 0.05;
-            camera.position.z += (zoomTarget - camera.position.z) * 0.1;
 
-            const speed = (1 + bass * 3) * speedMultiplier;
-            grassField.position.z += speed; if(grassField.position.z > 50) grassField.position.z = 0;
-            
-            // Distance tracking
-            distance += speed * 0.2;
-            document.getElementById('distStat').innerText = `DIST: ${Math.floor(distance)}m`;
-
-            runMasterCycle(speed);
-
-            // Train
-            const trainMins = ((Date.now() + timeOffset) / 60000) % 2;
-            tracks.children.forEach(t => { t.position.z += speed; if(t.position.z > 50) t.position.z -= 1000; });
-            if (trainMins < 0.2) trainGroup.children[0].position.z += speed * 3;
-            else trainGroup.children[0].position.z = -800;
-
-            distantCity.position.z += speed * 0.05; if(distantCity.position.z > 500) distantCity.position.z = 0;
-
-            // Collision: Ground Rocks
+            // Obstacle Movement & Collision
             obstacles.forEach(rock => {
                 rock.position.z += speed;
-                if(rock.position.z > 50) { rock.position.z = -800 - Math.random()*200; rock.position.x = (Math.random()-0.5)*100; }
+                if(rock.position.z > 50) {
+                    rock.position.z = -800;
+                    rock.position.x = (Math.random()-0.5)*100;
+                }
                 
-                if (Math.abs(rock.position.z - balloonGroup.position.z) < 5 && Math.abs(rock.position.x - balloonGroup.position.x) < 4) takeDamage();
+                const dx = rock.position.x - balloonGroup.position.x;
+                const dz = rock.position.z - balloonGroup.position.z;
+                if (Math.abs(dz) < 4 && Math.abs(dx) < 3) takeDamage();
             });
 
-            // Collision: Crows
-            crows.forEach((crow, i) => {
-                crow.position.z += speed * 1.5; crow.position.x += 0.5; crow.position.y += Math.sin(Date.now()*0.01 + i) * 0.2;
-                if(crow.position.z > 50 || crow.position.x > 80) crow.position.set(-60 - Math.random()*20, 5 + Math.random()*15, -600 - Math.random()*200); 
-                
-                if (Math.abs(crow.position.z - balloonGroup.position.z) < 4 && Math.abs(crow.position.x - balloonGroup.position.x) < 3) takeDamage();
-            });
-
-            // Weather Movement
-            const moveWeather = (mesh, drop, wrapY) => {
-                if(mesh.material.opacity > 0) {
-                    const pos = mesh.geometry.attributes.position.array;
-                    for(let i=1; i<pos.length; i+=3) { 
-                        pos[i] -= drop; 
-                        if(mesh === meteors) pos[i-1] += drop;
-                        if(pos[i] < 0) pos[i] = wrapY; 
-                    }
-                    mesh.geometry.attributes.position.needsUpdate = true;
-                }
-            };
-            moveWeather(rain, 3 + bass, 150);
-            moveWeather(hail, 4, 150);
-            moveWeather(meteors, 6, 200);
-
-            if(scarabs.material.opacity > 0) {
-                const pos = scarabs.geometry.attributes.position.array;
-                for(let i=0; i<pos.length; i+=3) {
-                    pos[i] += Math.sin(Date.now()*0.005 + i) * 0.5;
-                    pos[i+1] += Math.cos(Date.now()*0.005 + i) * 0.5;
-                    pos[i+2] += speed;
-                    if(pos[i+2] > 50) pos[i+2] = -400;
-                }
-                scarabs.geometry.attributes.position.needsUpdate = true;
-            }
-
-            camoMat.emissive = new THREE.Color(0x00f2ff).multiplyScalar(bass * 0.5);
-            bloomPass.strength = 1.0 + (bass * 2);
+            // Visuals
+            camoMat.emissiveIntensity = bass * 2;
+            bloomPass.strength = 1.0 + (bass * 1.5);
+            
             composer.render();
         }
 
-        document.getElementById('micBtn').addEventListener('click', initMic);
         window.onresize = () => {
-            camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight); composer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            composer.setSize(window.innerWidth, window.innerHeight);
         };
     </script>
 </body>
