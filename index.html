@@ -11,38 +11,37 @@
             --gold: #ffaa00;
             --bg-dark: #00050a;
         }
-        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; user-select: none; touch-action: none; }
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Segoe UI', sans-serif; user-select: none; touch-action: none; }
         
-        /* THE GATE */
+        /* ACCESS GATE */
         #overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             z-index: 2000; display: flex; flex-direction: column; 
             justify-content: center; align-items: center; 
             background: radial-gradient(circle, #101a25 0%, #000 100%); color: #fff; transition: opacity 0.8s ease-out;
         }
-        .vortex-logo { font-size: 3rem; letter-spacing: 12px; color: var(--neon-cyan); text-shadow: 0 0 20px var(--neon-cyan); margin: 0; font-weight: 900; }
-        .tagline { font-size: 1rem; color: var(--gold); letter-spacing: 5px; margin-bottom: 40px; text-transform: uppercase; }
+        .vortex-logo { font-size: 3rem; letter-spacing: 12px; color: var(--neon-cyan); text-shadow: 0 0 20px var(--neon-cyan); margin: 0; font-weight: 900; text-align: center; }
+        .tagline { font-size: 0.9rem; color: var(--gold); letter-spacing: 5px; margin-bottom: 40px; text-transform: uppercase; text-align: center; }
         
-        #access-gate { background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1); padding: 40px; border-radius: 15px; backdrop-filter: blur(10px); text-align: center; }
-        .payment-links { display: flex; gap: 15px; margin: 20px 0; justify-content: center; }
-        .pay-btn { background: var(--gold); color: #000; text-decoration: none; padding: 12px 25px; font-weight: bold; border-radius: 5px; transition: 0.3s; font-size: 0.8rem; letter-spacing: 1px; }
-        .pay-btn:hover { transform: scale(1.05); filter: brightness(1.2); }
+        #access-gate { background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.1); padding: 40px; border-radius: 15px; backdrop-filter: blur(10px); text-align: center; width: 320px; }
+        .payment-links { display: flex; flex-direction: column; gap: 10px; margin: 20px 0; }
+        .pay-btn { background: var(--gold); color: #000; text-decoration: none; padding: 12px; font-weight: bold; border-radius: 4px; transition: 0.3s; font-size: 0.8rem; letter-spacing: 1px; }
+        .pay-btn:hover { transform: scale(1.02); filter: brightness(1.2); }
         
-        #passField { background: transparent; border: none; border-bottom: 2px solid #333; color: var(--neon-cyan); text-align: center; padding: 10px; margin-top: 20px; font-family: monospace; letter-spacing: 4px; outline: none; transition: 0.3s; }
-        #passField:focus { border-color: var(--neon-cyan); }
+        #passField { background: transparent; border: none; border-bottom: 2px solid #333; color: var(--neon-cyan); text-align: center; padding: 10px; margin-top: 20px; font-family: monospace; letter-spacing: 4px; outline: none; width: 100%; box-sizing: border-box; }
 
         #game-setup { display: none; flex-direction: column; align-items: center; gap: 20px; animation: fadeIn 0.5s; }
-        #usernameInput { padding: 12px; font-size: 1.2rem; background: rgba(0, 242, 255, 0.05); color: var(--neon-cyan); border: 1px solid var(--neon-cyan); text-align: center; border-radius: 5px; width: 280px; outline: none; }
+        #usernameInput { padding: 12px; font-size: 1.1rem; background: rgba(0, 242, 255, 0.05); color: var(--neon-cyan); border: 1px solid var(--neon-cyan); text-align: center; border-radius: 5px; width: 280px; outline: none; }
         
-        .btn-group { display: flex; gap: 15px; }
-        button { padding: 15px 35px; font-size: 0.9rem; cursor: pointer; background: transparent; color: var(--neon-cyan); border: 1px solid var(--neon-cyan); font-weight: bold; text-transform: uppercase; letter-spacing: 2px; transition: 0.3s; border-radius: 4px; }
-        button:hover { background: var(--neon-cyan); color: #000; box-shadow: 0 0 20px var(--neon-cyan); }
+        .btn-group { display: flex; gap: 10px; }
+        button { padding: 15px 25px; font-size: 0.8rem; cursor: pointer; background: transparent; color: var(--neon-cyan); border: 1px solid var(--neon-cyan); font-weight: bold; text-transform: uppercase; letter-spacing: 1px; transition: 0.3s; border-radius: 4px; }
+        button:hover { background: var(--neon-cyan); color: #000; box-shadow: 0 0 15px var(--neon-cyan); }
 
         /* HUD */
-        #ui-panel { position: absolute; top: 30px; left: 30px; right: 30px; display: flex; justify-content: space-between; pointer-events: none; z-index: 100; font-family: monospace; }
-        .stat-box { background: rgba(0,10,20,0.7); padding: 10px 20px; border-left: 3px solid var(--neon-cyan); }
-        #livesStat { color: var(--neon-pink); font-size: 1.4rem; }
-        #distStat { color: var(--neon-cyan); font-size: 1.4rem; }
+        #ui-panel { position: absolute; top: 20px; left: 20px; right: 20px; display: flex; justify-content: space-between; pointer-events: none; z-index: 100; }
+        .stat-box { background: rgba(0,10,20,0.8); padding: 8px 15px; border-left: 3px solid var(--neon-cyan); font-family: monospace; }
+        #livesStat { color: var(--neon-pink); font-size: 1.2rem; }
+        #distStat { color: var(--neon-cyan); font-size: 1.2rem; }
 
         .hit-flash { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--neon-pink); opacity: 0; pointer-events: none; z-index: 500; transition: opacity 0.1s; }
         
@@ -55,22 +54,21 @@
 
     <div id="overlay">
         <h1 class="vortex-logo">NEXUS VORTEX</h1>
-        <div class="tagline">Apex Survivor: Web Summit Edition</div>
+        <div class="tagline">Apex Survivor: Vancouver 2026</div>
         
         <div id="access-gate">
-            <p style="font-size: 0.8rem; color: #888;">CONTRIBUTION PROTOCOL REQUIRED FOR SIMULATION</p>
             <div class="payment-links">
-                <a href="https://nowpayments.io/payment/?iid=5817172284" target="_blank" class="pay-btn">BITCOIN / CRYPTO</a>
-                <a href="https://buy.stripe.com/eVqaEWeI74KEddqbhgcIE03" target="_blank" class="pay-btn">STRIPE / CREDIT</a>
+                <a href="https://nowpayments.io/payment/?iid=5817172284" target="_blank" class="pay-btn">PAY WITH CRYPTO</a>
+                <a href="https://buy.stripe.com/eVqaEWeI74KEddqbhgcIE03" target="_blank" class="pay-btn">PAY WITH STRIPE</a>
             </div>
             <input type="password" id="passField" placeholder="SYSTEM KEY">
         </div>
 
         <div id="game-setup">
-            <input type="text" id="usernameInput" placeholder="SET CALL-SIGN" maxlength="12">
+            <input type="text" id="usernameInput" placeholder="ENTER CALL-SIGN" maxlength="12">
             <div class="btn-group">
                 <button id="micBtn">SYNC MIC</button>
-                <button id="fileBtn">LOAD SONIC FILE</button>
+                <button id="fileBtn">LOAD MP3</button>
             </div>
             <input type="file" id="audioUpload" accept="audio/*" style="display: none;">
         </div>
@@ -78,7 +76,7 @@
 
     <div id="ui-panel">
         <div class="stat-box" id="livesStat">CORE: 100%</div>
-        <div class="stat-box" id="distStat">VORTEX DEPTH: 0m</div>
+        <div class="stat-box" id="distStat">DEPTH: 0m</div>
     </div>
 
     <audio id="audioPlayer" style="display:none"></audio>
@@ -102,22 +100,20 @@
         let audioCtx, analyzer, dataArray;
         const audioElement = document.getElementById('audioPlayer');
         
-        // Game Settings
         let lives = 100, distance = 0, isGameOver = false, isInvulnerable = false;
         let currentX = 0, targetX = 0;
-        let obstacles = [], starField;
+        let obstacles = [], starField, ship, shipMaterial, obstacleMaterial;
 
-        // --- Gate Security ---
-        // Simple hash check so password isn't visible in plain text
-        const _0x4f2 = "reef"; 
+        // Gate Access (Developer Key)
+        const _K = "reef"; 
         document.getElementById('passField').addEventListener('input', (e) => {
-            if(e.target.value.toLowerCase() === _0x4f2) {
+            if(e.target.value.toLowerCase() === _K) {
                 document.getElementById('access-gate').style.display = 'none';
                 document.getElementById('game-setup').style.display = 'flex';
             }
         });
 
-        // --- Audio Core ---
+        // Audio Engine
         async function setupAudio() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -131,8 +127,7 @@
         document.getElementById('fileBtn').addEventListener('click', () => document.getElementById('audioUpload').click());
         document.getElementById('audioUpload').addEventListener('change', async function() {
             await setupAudio();
-            const url = URL.createObjectURL(this.files[0]);
-            audioElement.src = url;
+            audioElement.src = URL.createObjectURL(this.files[0]);
             const source = audioCtx.createMediaElementSource(audioElement);
             source.connect(analyzer);
             analyzer.connect(audioCtx.destination);
@@ -147,62 +142,44 @@
                 const source = audioCtx.createMediaStreamSource(stream);
                 source.connect(analyzer);
                 startGame();
-            } catch (err) {
-                alert("Microphone access denied. Please use 'SONIC FILE' mode.");
-            }
+            } catch (err) { alert("Mic access required for this mode."); }
         });
 
-        // --- Engine ---
         function startGame() {
-            const overlay = document.getElementById('overlay');
-            overlay.style.opacity = '0';
-            setTimeout(() => overlay.style.display = 'none', 800);
-            initScene();
+            document.getElementById('overlay').style.opacity = '0';
+            setTimeout(() => document.getElementById('overlay').style.display = 'none', 800);
+            init();
         }
 
-        function initScene() {
+        function init() {
             scene = new THREE.Scene();
-            scene.fog = new THREE.FogExp2(0x00050a, 0.005);
+            scene.fog = new THREE.FogExp2(0x00050a, 0.006);
             
             camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 2000);
-            camera.position.set(0, 8, 30);
+            camera.position.set(0, 8, 35);
 
             renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             renderer.setSize(window.innerWidth, window.innerHeight);
             document.body.appendChild(renderer.domElement);
 
-            // Post Processing
             composer = new EffectComposer(renderer);
             composer.addPass(new RenderPass(scene, camera));
-            bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+            bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.6, 0.4, 0.85);
             composer.addPass(bloomPass);
 
             createWorld();
             
-            // Interaction
-            window.addEventListener('pointermove', (e) => {
-                targetX = (e.clientX / window.innerWidth - 0.5) * 80;
-            });
-            
-            // Touch Support
-            window.addEventListener('touchmove', (e) => {
-                targetX = (e.touches[0].clientX / window.innerWidth - 0.5) * 80;
-            }, {passive: false});
+            window.addEventListener('pointermove', (e) => targetX = (e.clientX / window.innerWidth - 0.5) * 85);
+            window.addEventListener('touchmove', (e) => targetX = (e.touches[0].clientX / window.innerWidth - 0.5) * 85, {passive: false});
 
             animate();
         }
 
-        let ship, shipMaterial;
         function createWorld() {
-            // Neon Grid Floor
-            const gridGeo = new THREE.PlaneGeometry(2000, 2000, 100, 100);
-            const gridMat = new THREE.MeshStandardMaterial({ 
-                color: 0x00f2ff, 
-                wireframe: true,
-                transparent: true,
-                opacity: 0.2
-            });
+            // Neon Grid
+            const gridGeo = new THREE.PlaneGeometry(2000, 2000, 80, 80);
+            const gridMat = new THREE.MeshStandardMaterial({ color: 0x00f2ff, wireframe: true, transparent: true, opacity: 0.15 });
             const grid = new THREE.Mesh(gridGeo, gridMat);
             grid.rotation.x = -Math.PI/2;
             scene.add(grid);
@@ -210,40 +187,43 @@
             // Starfield
             const starGeo = new THREE.BufferGeometry();
             const starCoords = [];
-            for(let i=0; i<5000; i++) {
+            for(let i=0; i<4000; i++) {
                 starCoords.push(THREE.MathUtils.randFloatSpread(1000), THREE.MathUtils.randFloatSpread(1000), THREE.MathUtils.randFloatSpread(1000));
             }
             starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starCoords, 3));
-            starField = new THREE.Points(starGeo, new THREE.PointsMaterial({color: 0xffffff, size: 0.7}));
+            starField = new THREE.Points(starGeo, new THREE.PointsMaterial({color: 0xffffff, size: 0.6}));
             scene.add(starField);
 
-            // Apex Ship
-            const shipGeo = new THREE.ConeGeometry(1.5, 4, 3);
+            // Player Ship
             shipMaterial = new THREE.MeshStandardMaterial({ color: 0x00f2ff, emissive: 0x00f2ff, emissiveIntensity: 2 });
-            ship = new THREE.Mesh(shipGeo, shipMaterial);
+            ship = new THREE.Mesh(new THREE.ConeGeometry(1.2, 3.5, 3), shipMaterial);
             ship.rotation.x = Math.PI / 2;
             scene.add(ship);
 
-            // Lights
-            const pLight = new THREE.PointLight(0x00f2ff, 10, 100);
-            pLight.position.set(0, 5, 5);
-            ship.add(pLight);
-            scene.add(new THREE.AmbientLight(0x202020));
-
-            // Obstacles
-            const obsGeo = new THREE.IcosahedronGeometry(3, 0);
-            const obsMat = new THREE.MeshStandardMaterial({ color: 0xff0055, flatShading: true });
-            for(let i=0; i<30; i++) {
-                const obs = new THREE.Mesh(obsGeo, obsMat);
-                resetObstacle(obs);
+            // Obstacles with Glow
+            obstacleMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0xff0055, 
+                flatShading: true,
+                emissive: 0xff0055,
+                emissiveIntensity: 0.5 
+            });
+            const obsGeo = new THREE.IcosahedronGeometry(2.5, 0);
+            for(let i=0; i<35; i++) {
+                const obs = new THREE.Mesh(obsGeo, obstacleMaterial.clone()); // Cloning mat for individual glow control
+                resetObs(obs);
                 obs.position.z = -Math.random() * 1000;
                 obstacles.push(obs);
                 scene.add(obs);
             }
+
+            scene.add(new THREE.AmbientLight(0x202020));
+            const pL = new THREE.PointLight(0x00f2ff, 15, 100);
+            pL.position.set(0, 5, 5);
+            ship.add(pL);
         }
 
-        function resetObstacle(obj) {
-            obj.position.set((Math.random()-0.5)*120, 3, -1000);
+        function resetObs(obj) {
+            obj.position.set((Math.random()-0.5)*140, 2.5, -1000);
             obj.rotation.set(Math.random()*Math.PI, Math.random()*Math.PI, 0);
         }
 
@@ -252,55 +232,47 @@
             lives -= 10;
             document.getElementById('livesStat').innerText = `CORE: ${lives}%`;
             document.getElementById('flash').style.opacity = '0.7';
-            setTimeout(() => document.getElementById('flash').style.opacity = '0', 150);
-            
+            setTimeout(() => document.getElementById('flash').style.opacity = '0', 100);
             isInvulnerable = true;
             setTimeout(() => isInvulnerable = false, 800);
-            
-            if (lives <= 0) {
-                isGameOver = true;
-                alert("NEXUS COLLAPSE DETECTED. Final Depth: " + Math.floor(distance) + "m");
-                location.reload();
-            }
+            if (lives <= 0) { isGameOver = true; alert("CORE CRITICAL. DISTANCE: " + Math.floor(distance) + "m"); location.reload(); }
         }
 
         function animate() {
             if (isGameOver) return;
             requestAnimationFrame(animate);
             
-            let freq = 0;
+            let bass = 0;
             if (analyzer) {
                 analyzer.getByteFrequencyData(dataArray);
-                freq = dataArray[4] / 255; // Mid-range for more stable speed
+                bass = dataArray[3] / 255; 
             }
 
-            const frameSpeed = 2.0 + (freq * 6.0);
-            distance += frameSpeed * 0.2;
-            document.getElementById('distStat').innerText = `VORTEX DEPTH: ${Math.floor(distance)}m`;
+            const speed = 2.0 + (bass * 7.5);
+            distance += speed * 0.15;
+            document.getElementById('distStat').innerText = `DEPTH: ${Math.floor(distance)}m`;
 
-            // Ship Smoothing
             currentX += (targetX - currentX) * 0.08;
             ship.position.x = currentX;
-            ship.rotation.y = -(targetX - currentX) * 0.1;
             ship.rotation.z = -(targetX - currentX) * 0.2;
 
-            // Obstacles Loop
             obstacles.forEach(obj => {
-                obj.position.z += frameSpeed;
-                obj.rotation.x += 0.01;
+                obj.position.z += speed;
+                obj.rotation.y += 0.02;
                 
-                if(obj.position.z > 50) resetObstacle(obj);
+                // Audio-Reactive Glow
+                obj.material.emissiveIntensity = 0.4 + (bass * 2.5);
+
+                if(obj.position.z > 50) resetObs(obj);
                 
-                // Collision
                 const dx = obj.position.x - ship.position.x;
                 const dz = obj.position.z - ship.position.z;
                 if (Math.abs(dz) < 4 && Math.abs(dx) < 3.5) takeDamage();
             });
 
-            // Pulse Visuals
-            shipMaterial.emissiveIntensity = 1 + freq * 3;
-            bloomPass.strength = 1.2 + freq * 2;
-            starField.position.z += frameSpeed * 0.5;
+            shipMaterial.emissiveIntensity = 1 + bass * 4;
+            bloomPass.strength = 1.3 + bass * 1.8;
+            starField.position.z += speed * 0.4;
             if(starField.position.z > 500) starField.position.z = 0;
             
             composer.render();
